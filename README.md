@@ -64,4 +64,4 @@ d-exclaimation
 <img width="8%" src="https://avatars.githubusercontent.com/u/70748917?v=4"> 
 
 [d-exclaimation](https://d-exclaimation.me)<br/>
-<small>Not much of a talker</small>
+<small>Definitely a software developer</small>
