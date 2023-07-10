@@ -3,6 +3,11 @@ package async
 // Unit is a type that represents a void
 type Unit struct{}
 
+var (
+	// Done is a unit that represents a void
+	Done = Unit{}
+)
+
 // Result is a struct that contains the result or error of a task
 type Result[T any] struct {
 	// The result of the task

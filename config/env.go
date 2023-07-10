@@ -8,9 +8,11 @@ import (
 )
 
 const (
-	OAUTH    = "OAUTH_TOKEN"
-	CHANNELS = "CHANNEL_IDS"
-	GO_ENV   = "GO_ENV"
+	OAUTH          = "OAUTH_TOKEN"
+	OAUTH_APP      = "OAUTH_APP_TOKEN"
+	OAUTH_APP_NAME = "OAUTH_APP_NAME"
+	CHANNELS       = "CHANNEL_IDS"
+	GO_ENV         = "GO_ENV"
 )
 
 // Environment is a struct that holds the environment variables
@@ -18,6 +20,7 @@ type Environment struct {
 	oauth    string
 	channels []string
 	mode     string
+	oauthApp string
 }
 
 // Env is a global environment variables
@@ -32,6 +35,7 @@ func (*Environment) Load() {
 	Env.oauth = GetOAuthEnv()
 	Env.mode = mode
 	Env.channels = GetChannelsEnv()
+	Env.oauthApp = GetOAuthAppEnv()
 }
 
 // OAuth lazily load and returns the OAuth token
@@ -39,6 +43,15 @@ func (e *Environment) OAuth() string {
 	res := e.oauth
 	if res == "" {
 		res = GetOAuthEnv()
+	}
+	return res
+}
+
+// OAuthApp lazily load and returns the OAuth app token
+func (e *Environment) OAuthApp() string {
+	res := e.oauthApp
+	if res == "" {
+		res = GetOAuthAppEnv()
 	}
 	return res
 }
@@ -84,4 +97,14 @@ func GetOAuthEnv() string {
 func GetChannelsEnv() []string {
 	res := os.Getenv(CHANNELS)
 	return strings.Split(res, ",")
+}
+
+// GetOAuthAppEnv returns the OAuth app token from the environment directly
+func GetOAuthAppEnv() string {
+	return os.Getenv(OAUTH_APP)
+}
+
+// GetOAuthAppNameEnv returns the OAuth app name from the environment directly
+func GetOAuthAppNameEnv() string {
+	return os.Getenv(OAUTH_APP_NAME)
 }
