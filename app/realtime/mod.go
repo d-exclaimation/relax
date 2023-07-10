@@ -278,7 +278,7 @@ func Listen(client *slack.Client) {
 							}
 
 							err := client.SaveWorkflowStepConfiguration(
-								e2.WorkflowStep.WorkflowID,
+								e2.WorkflowStep.WorkflowStepEditID,
 								in,
 								nil,
 							)
