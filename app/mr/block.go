@@ -16,6 +16,8 @@ const (
 
 	CHANNEL_ACTION = "mr-channel"
 	CHANNEL_INPUT  = "mr-channel-input"
+
+	RANDOM_REVIEWER = "mr-reviewer-output"
 )
 
 func ReviewerWorkflowStepBlocks(reviewee string, channel string) []slack.Block {

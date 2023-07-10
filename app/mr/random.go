@@ -30,6 +30,31 @@ func randomReviewer(reviewers []Reviewer) Reviewer {
 	return random.Weighted[Reviewer](values...)
 }
 
+// FilteredRandomReviewer picks a random reviewer from the team, excluding the given user
+func FilteredRandomReviewer(client *slack.Client, excluding func(slack.User) bool) (*slack.User, error) {
+	teamMembers, err := team.GetMembers(client, "team").Await()
+
+	if err != nil {
+		return nil, err
+	}
+
+	filteredMembers := f.Filter(teamMembers, func(user slack.User) bool {
+		return !excluding(user)
+	})
+	reviewer := randomReviewer(
+		f.Map(filteredMembers, func(user slack.User) Reviewer {
+			return Reviewer{
+				User: &user,
+
+				// TODO: Get the review count from KV
+				ReviewCount: 0,
+			}
+		}),
+	)
+
+	return reviewer.User, nil
+}
+
 // RandomReviewerResolver is a resolver that picks a random reviewer from the team and returns an appropriate message
 func RandomReviewerResolver(client *slack.Client, excluding func(slack.User) bool) (slack.MsgOption, error) {
 	teamMembers, err := team.GetMembers(client, "team").Await()

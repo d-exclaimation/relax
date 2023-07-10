@@ -54,6 +54,24 @@ func handler(client *slack.Client) router.Handler[RealtimeContext] {
 			return err
 		}),
 
+		// @relax revieweer-workflow
+		router.Contains("reviewer-workflow", func(ctx RealtimeContext) error {
+			user, err := mr.FilteredRandomReviewer(ctx.Client, func(u slack.User) bool {
+				return u.IsBot || u.IsRestricted || u.ID == ctx.UserID
+			})
+			if err != nil {
+				return err
+			}
+			err = client.WorkflowStepCompleted(ctx.ReplyTo,
+				slack.WorkflowStepCompletedRequestOptionOutput(
+					map[string]string{
+						mr.RANDOM_REVIEWER: user.ID,
+					},
+				),
+			)
+			return err
+		}),
+
 		// @relax hello
 		router.Contains("hello", func(ctx RealtimeContext) error {
 			_, _, err := ctx.Client.PostMessage(
@@ -195,6 +213,7 @@ func Listen(client *slack.Client) {
 										UserID:  event.User,
 									}
 								})
+
 								if err != nil {
 									log.Fatalln(err)
 								}
@@ -208,10 +227,10 @@ func Listen(client *slack.Client) {
 							channel := (*event.WorkflowStep.Inputs)[mr.CHANNEL_ACTION].Value
 
 							async.New(func() (async.Unit, error) {
-								err := handle(event.CallbackID, func() RealtimeContext {
+								err := handle(event.CallbackID+"-workflow", func() RealtimeContext {
 									return RealtimeContext{
 										Client:  client,
-										ReplyTo: channel,
+										ReplyTo: event.WorkflowStep.WorkflowStepExecuteID,
 										Channel: channel,
 										UserID:  user,
 									}
@@ -277,10 +296,16 @@ func Listen(client *slack.Client) {
 								},
 							}
 
+							out := slack.WorkflowStepOutput{
+								Name:  mr.RANDOM_REVIEWER,
+								Type:  "user",
+								Label: "Random Reviewer",
+							}
+
 							err := client.SaveWorkflowStepConfiguration(
 								e2.WorkflowStep.WorkflowStepEditID,
 								in,
-								nil,
+								&[]slack.WorkflowStepOutput{out},
 							)
 
 							if err != nil {
