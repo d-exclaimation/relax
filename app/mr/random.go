@@ -1,16 +1,11 @@
 package mr
 
 import (
+	"d-exclaimation.me/relax/app/team"
 	"d-exclaimation.me/relax/lib/f"
 	"d-exclaimation.me/relax/lib/random"
-	"d-exclaimation.me/relax/lib/team"
 	"github.com/slack-go/slack"
 )
-
-type Reviewer struct {
-	User        *slack.User
-	ReviewCount int
-}
 
 func randomReviewer(reviewers []Reviewer) Reviewer {
 	reviews := f.SumBy(reviewers, func(reviewer Reviewer) int {
@@ -53,7 +48,7 @@ func RandomReviewerResolver(client *slack.Client) (slack.MsgOption, error) {
 	)
 
 	msg := slack.MsgOptionBlocks(
-		ChosenReviewerBlock(reviewer.User),
+		reviewer.ChosenReviewerBlock(),
 		slack.NewDividerBlock(),
 		slack.NewSectionBlock(
 			slack.NewTextBlockObject(

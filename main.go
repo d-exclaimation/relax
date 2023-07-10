@@ -3,8 +3,8 @@ package main
 import (
 	"log"
 
+	"d-exclaimation.me/relax/app/mr"
 	"d-exclaimation.me/relax/config"
-	"d-exclaimation.me/relax/lib/mr"
 	"github.com/slack-go/slack"
 )
 
