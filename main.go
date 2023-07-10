@@ -5,6 +5,7 @@ import (
 
 	"d-exclaimation.me/relax/app/mr"
 	"d-exclaimation.me/relax/config"
+	"d-exclaimation.me/relax/lib/async"
 	"github.com/slack-go/slack"
 )
 
@@ -21,15 +22,19 @@ func main() {
 
 	resolver := resolvers["reviewer"]
 
-	msg, err := resolver(client)
+	task := async.New(func() (async.Unit, error) {
+		msg, err := resolver(client)
 
-	if err != nil {
-		log.Fatalf("Cannot resolve message because %s\n", err)
-		log.Fatalln("Exiting...")
-		return
-	}
+		if err != nil {
+			return async.Unit{}, err
+		}
 
-	_, _, err = client.PostMessage(config.Env.Channels()[0], msg)
+		_, _, err = client.PostMessage(config.Env.Channels()[0], msg)
+
+		return async.Unit{}, err
+	})
+
+	_, err := task.Await()
 
 	if err != nil {
 		log.Fatalf("Cannot post message because %s\n", err)

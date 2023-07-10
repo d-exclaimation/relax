@@ -32,7 +32,7 @@ func randomReviewer(reviewers []Reviewer) Reviewer {
 
 // RandomReviewerResolver is a resolver that picks a random reviewer from the team and returns an appropriate message
 func RandomReviewerResolver(client *slack.Client) (slack.MsgOption, error) {
-	teamMembers, err := team.GetMembers(client, "team")
+	teamMembers, err := team.GetMembers(client, "team").Await()
 
 	if err != nil {
 		return nil, err
