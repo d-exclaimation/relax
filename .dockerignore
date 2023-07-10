@@ -1,0 +1,7 @@
+**/.env
+.DS_Store
+vendor/
+*.test
+*~
+.idea/
+.vscode/
