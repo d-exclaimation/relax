@@ -1,17 +1,18 @@
 package team
 
 import (
+	"d-exclaimation.me/relax/lib/f"
 	"github.com/slack-go/slack"
 )
 
-func GetMembers(client *slack.Client) ([]slack.User, error) {
+func GetMembers(client *slack.Client, handle string) ([]slack.User, error) {
 	userGroups, err := client.GetUserGroups()
 	if err != nil {
 		return nil, err
 	}
 
 	for _, group := range userGroups {
-		if group.Handle != "team" {
+		if group.Handle != handle {
 			continue
 		}
 		ids, err := client.GetUserGroupMembers(group.ID)
@@ -23,14 +24,9 @@ func GetMembers(client *slack.Client) ([]slack.User, error) {
 			return nil, err
 		}
 
-		members := make([]slack.User, len(ids))
-		for i, id := range ids {
-			for _, user := range users {
-				if user.ID == id {
-					members[i] = user
-				}
-			}
-		}
+		members := f.FilterSized(users, uint(len(ids)), func(user slack.User) bool {
+			return f.IsMember(ids, user.ID)
+		})
 		return members, nil
 	}
 
