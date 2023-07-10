@@ -30,18 +30,34 @@ type Quote struct {
 
 type RealtimeContext struct {
 	Client  *slack.Client
-	Channel string
+	ReplyTo string
 	UserID  string
+	Channel string
 }
 
 // Define the handler for the realtime events using the common router interface
 func handler(client *slack.Client) router.Handler[RealtimeContext] {
 	return router.Router[RealtimeContext](
 
+		// @relax revieweer-edit
+		router.Contains("reviewer-edit", func(ctx RealtimeContext) error {
+			_, err := client.OpenView(
+				ctx.ReplyTo,
+				slack.NewConfigurationModalRequest(
+					slack.Blocks{
+						BlockSet: mr.ReviewerWorkflowStepBlocks(ctx.UserID, ctx.Channel),
+					},
+					"",
+					"",
+				).ModalViewRequest,
+			)
+			return err
+		}),
+
 		// @relax hello
 		router.Contains("hello", func(ctx RealtimeContext) error {
 			_, _, err := ctx.Client.PostMessage(
-				ctx.Channel,
+				ctx.ReplyTo,
 				slack.MsgOptionText("Hello!", false),
 			)
 			return err
@@ -59,7 +75,7 @@ func handler(client *slack.Client) router.Handler[RealtimeContext] {
 				return err
 			}
 			_, _, err = ctx.Client.PostMessage(
-				ctx.Channel,
+				ctx.ReplyTo,
 				msg,
 			)
 			return err
@@ -86,7 +102,7 @@ func handler(client *slack.Client) router.Handler[RealtimeContext] {
 			quote := quotes[0]
 
 			_, _, err = ctx.Client.PostMessage(
-				ctx.Channel,
+				ctx.ReplyTo,
 				slack.MsgOptionBlocks(
 					slack.NewSectionBlock(
 						slack.NewTextBlockObject(
@@ -174,6 +190,7 @@ func Listen(client *slack.Client) {
 								err := handle(event.Text, func() RealtimeContext {
 									return RealtimeContext{
 										Client:  client,
+										ReplyTo: event.Channel,
 										Channel: event.Channel,
 										UserID:  event.User,
 									}
@@ -183,7 +200,95 @@ func Listen(client *slack.Client) {
 								}
 								return async.Done, nil
 							})
+
+						case *slackevents.WorkflowStepExecuteEvent:
+							log.Printf("Receiving workflow step execute event from %s\n", event.CallbackID)
+
+							user := (*event.WorkflowStep.Inputs)[mr.REVIEWEE_ACTION].Value
+							channel := (*event.WorkflowStep.Inputs)[mr.CHANNEL_ACTION].Value
+
+							async.New(func() (async.Unit, error) {
+								err := handle(event.CallbackID, func() RealtimeContext {
+									return RealtimeContext{
+										Client:  client,
+										ReplyTo: channel,
+										Channel: channel,
+										UserID:  user,
+									}
+								})
+								if err != nil {
+									log.Fatalln(err)
+								}
+								return async.Done, nil
+							})
 						}
+
+					}
+
+				// Interactive components from Slack
+				case socketmode.EventTypeInteractive:
+					e2, ok := e1.Data.(slack.InteractionCallback)
+					if !ok {
+						continue
+					}
+
+					// Make sure Slack knows we acknowledge the event
+					conn.Ack(*e1.Request)
+
+					switch e2.Type {
+
+					// Handling workflow step edit
+					case slack.InteractionTypeWorkflowStepEdit:
+						log.Printf("Receiving workflow step edit from %s\n", e2.CallbackID)
+
+						user := e2.User.ID
+						channel := e2.Channel.ID
+						command := e2.CallbackID + "-edit"
+
+						async.New(func() (async.Unit, error) {
+							err := handle(command, func() RealtimeContext {
+								return RealtimeContext{
+									Client:  client,
+									ReplyTo: e2.TriggerID,
+									Channel: channel,
+									UserID:  user,
+								}
+							})
+							if err != nil {
+								log.Fatalln(err)
+							}
+							return async.Done, nil
+						})
+
+					// Handling workflow step view submission
+					case slack.InteractionTypeViewSubmission:
+						log.Printf("Receiving workflow step view submission from %s\n", e2.CallbackID)
+
+						async.New(func() (async.Unit, error) {
+							values := e2.View.State.Values
+							user := values[mr.REVIEWEE_INPUT][mr.REVIEWEE_ACTION].SelectedOption.Value
+							channel := values[mr.CHANNEL_INPUT][mr.CHANNEL_ACTION].SelectedConversation
+							in := &slack.WorkflowStepInputs{
+								mr.REVIEWEE_ACTION: {
+									Value: user,
+								},
+								mr.CHANNEL_ACTION: {
+									Value: channel,
+								},
+							}
+
+							err := client.SaveWorkflowStepConfiguration(
+								e2.WorkflowStep.WorkflowID,
+								in,
+								nil,
+							)
+
+							if err != nil {
+								log.Fatalln(err)
+							}
+
+							return async.Done, nil
+						})
 					}
 
 				// Slash commands from Slack
@@ -204,6 +309,7 @@ func Listen(client *slack.Client) {
 						err := handle(action, func() RealtimeContext {
 							return RealtimeContext{
 								Client:  client,
+								ReplyTo: command.ChannelID,
 								Channel: command.ChannelID,
 								UserID:  command.UserID,
 							}
