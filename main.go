@@ -3,42 +3,32 @@ package main
 import (
 	"log"
 
-	"d-exclaimation.me/relax/app/mr"
+	"d-exclaimation.me/relax/app/realtime"
 	"d-exclaimation.me/relax/config"
 	"d-exclaimation.me/relax/lib/async"
 	"github.com/slack-go/slack"
 )
 
-type Resolver func(client *slack.Client) (slack.MsgOption, error)
-
 func main() {
 	config.Env.Load()
 
-	client := slack.New(config.Env.OAuth(), slack.OptionDebug(true))
+	client := slack.New(
+		config.Env.OAuth(),
+		slack.OptionAppLevelToken(config.Env.OAuthApp()),
+	)
 
-	resolvers := map[string]Resolver{
-		"reviewer": mr.RandomReviewerResolver,
-	}
-
-	resolver := resolvers["reviewer"]
-
-	task := async.New(func() (async.Unit, error) {
-		msg, err := resolver(client)
-
-		if err != nil {
-			return async.Unit{}, err
-		}
-
-		_, _, err = client.PostMessage(config.Env.Channels()[0], msg)
-
-		return async.Unit{}, err
+	task1 := async.New(func() (async.Unit, error) {
+		realtime.Listen(client)
+		return async.Done, nil
 	})
 
-	_, err := task.Await()
+	errors := async.AwaitAllUnit(
+		task1,
+	)
 
-	if err != nil {
-		log.Fatalf("Cannot post message because %s\n", err)
-		log.Fatalln("Exiting...")
-		return
+	for _, err := range errors {
+		if err != nil {
+			log.Fatalf("error: %s", err)
+		}
 	}
 }
