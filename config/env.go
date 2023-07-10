@@ -11,6 +11,7 @@ const (
 	OAUTH          = "OAUTH_TOKEN"
 	OAUTH_APP      = "OAUTH_APP_TOKEN"
 	OAUTH_APP_NAME = "OAUTH_APP_NAME"
+	QUOTE_API_URL  = "QUOTE_API_URL"
 	CHANNELS       = "CHANNEL_IDS"
 	GO_ENV         = "GO_ENV"
 )
@@ -21,6 +22,7 @@ type Environment struct {
 	channels []string
 	mode     string
 	oauthApp string
+	quoteAPI string
 }
 
 // Env is a global environment variables
@@ -36,6 +38,7 @@ func (*Environment) Load() {
 	Env.mode = mode
 	Env.channels = GetChannelsEnv()
 	Env.oauthApp = GetOAuthAppEnv()
+	Env.quoteAPI = GetQuoteAPIURL()
 }
 
 // OAuth lazily load and returns the OAuth token
@@ -74,6 +77,15 @@ func (e *Environment) Mode() string {
 	return res
 }
 
+// QuoteAPI lazily load and returns the quote API URL
+func (e *Environment) QuoteAPI() string {
+	res := e.quoteAPI
+	if res == "" {
+		res = GetQuoteAPIURL()
+	}
+	return res
+}
+
 // IsProduction returns true if the mode is production
 func (e *Environment) IsProduction() bool {
 	return e.Mode() == "production"
@@ -107,4 +119,9 @@ func GetOAuthAppEnv() string {
 // GetOAuthAppNameEnv returns the OAuth app name from the environment directly
 func GetOAuthAppNameEnv() string {
 	return os.Getenv(OAUTH_APP_NAME)
+}
+
+// GetQuoteAPIURL returns the quote API URL from the environment directly
+func GetQuoteAPIURL() string {
+	return os.Getenv(QUOTE_API_URL)
 }

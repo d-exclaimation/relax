@@ -2,15 +2,31 @@ package realtime
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"log"
+	"net/http"
 
 	"d-exclaimation.me/relax/app/mr"
 	"d-exclaimation.me/relax/app/router"
+	"d-exclaimation.me/relax/config"
 	"d-exclaimation.me/relax/lib/async"
+	"d-exclaimation.me/relax/lib/f"
 	"github.com/slack-go/slack"
 	"github.com/slack-go/slack/slackevents"
 	"github.com/slack-go/slack/socketmode"
 )
+
+type Quote struct {
+	ID           string   `json:"_id"`
+	Content      string   `json:"content"`
+	Author       string   `json:"author"`
+	Tags         []string `json:"tags"`
+	AuthorSlug   string   `json:"authorSlug"`
+	Length       int      `json:"length"`
+	DateAdded    string   `json:"dateAdded"`
+	DateModified string   `json:"dateModified"`
+}
 
 type RealtimeContext struct {
 	Client *slack.Client
@@ -41,6 +57,50 @@ func handler(client *slack.Client) router.Handler[RealtimeContext] {
 				msg,
 			)
 			return err
+		}),
+
+		// @relax quote
+		router.Contains("quote", func(ctx RealtimeContext) error {
+			task := async.New(func() ([]Quote, error) {
+				data := make([]Quote, 1)
+				resp, err := http.Get(config.Env.QuoteAPI() + "/quotes/random?limit=1")
+				if err != nil {
+					return data, err
+				}
+				defer resp.Body.Close()
+
+				json.NewDecoder(resp.Body).Decode(&data)
+				return data, nil
+			})
+			quotes, err := task.Await()
+			if err != nil {
+				return err
+			}
+
+			quote := quotes[0]
+
+			_, _, err = ctx.Client.PostMessage(
+				ctx.Event.Channel,
+				slack.MsgOptionBlocks(
+					slack.NewSectionBlock(
+						slack.NewTextBlockObject(
+							"mrkdwn",
+							f.Text(
+								fmt.Sprintf("> _%s_", quote.Content),
+								fmt.Sprintf("> • _%s_", quote.Author),
+							),
+							false,
+							false,
+						),
+						nil,
+						nil,
+					),
+				),
+			)
+			if err != nil {
+				return err
+			}
+			return nil
 		}),
 	)
 }
