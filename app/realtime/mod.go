@@ -102,7 +102,7 @@ func Listen(client *slack.Client) {
 
 						// Handling app mentions (1st way of interacting with the bot)
 						case *slackevents.AppMentionEvent:
-							log.Printf("Receiving @relax%s from %s\n", event.Text, event.User)
+							log.Printf("Receiving mentions \"%s\" from %s\n", event.Text, event.User)
 
 							async.New(func() (async.Unit, error) {
 								err := handle(event.Text, func() RealtimeContext {
