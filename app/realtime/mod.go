@@ -31,6 +31,7 @@ type Quote struct {
 type RealtimeContext struct {
 	Client  *slack.Client
 	Channel string
+	UserID  string
 }
 
 // Define the handler for the realtime events using the common router interface
@@ -48,7 +49,12 @@ func handler(client *slack.Client) router.Handler[RealtimeContext] {
 
 		// @relax reviewer
 		router.Contains("reviewer", func(ctx RealtimeContext) error {
-			msg, err := mr.RandomReviewerResolver(ctx.Client)
+			msg, err := mr.RandomReviewerResolver(
+				ctx.Client,
+				func(u slack.User) bool {
+					return u.IsBot || u.IsRestricted || u.ID == ctx.UserID
+				},
+			)
 			if err != nil {
 				return err
 			}
@@ -169,6 +175,7 @@ func Listen(client *slack.Client) {
 									return RealtimeContext{
 										Client:  client,
 										Channel: event.Channel,
+										UserID:  event.User,
 									}
 								})
 								if err != nil {
@@ -191,13 +198,14 @@ func Listen(client *slack.Client) {
 
 					// Handle the event itself (2nd way of interacting with the bot)
 					action := f.TailString(command.Command)
-					log.Printf("Receiving slash commands /%s from %s\n", action, command.UserName)
+					log.Printf("Receiving slash commands /%s from %s<%s>\n", action, command.UserName, command.UserID)
 
 					async.New(func() (async.Unit, error) {
 						err := handle(action, func() RealtimeContext {
 							return RealtimeContext{
 								Client:  client,
 								Channel: command.ChannelID,
+								UserID:  command.UserID,
 							}
 						})
 						if err != nil {
