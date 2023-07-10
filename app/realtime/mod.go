@@ -29,8 +29,8 @@ type Quote struct {
 }
 
 type RealtimeContext struct {
-	Client *slack.Client
-	Event  *slackevents.AppMentionEvent
+	Client  *slack.Client
+	Channel string
 }
 
 // Define the handler for the realtime events using the common router interface
@@ -40,7 +40,7 @@ func handler(client *slack.Client) router.Handler[RealtimeContext] {
 		// @relax hello
 		router.Contains("hello", func(ctx RealtimeContext) error {
 			_, _, err := ctx.Client.PostMessage(
-				ctx.Event.Channel,
+				ctx.Channel,
 				slack.MsgOptionText("Hello!", false),
 			)
 			return err
@@ -53,7 +53,7 @@ func handler(client *slack.Client) router.Handler[RealtimeContext] {
 				return err
 			}
 			_, _, err = ctx.Client.PostMessage(
-				ctx.Event.Channel,
+				ctx.Channel,
 				msg,
 			)
 			return err
@@ -80,7 +80,7 @@ func handler(client *slack.Client) router.Handler[RealtimeContext] {
 			quote := quotes[0]
 
 			_, _, err = ctx.Client.PostMessage(
-				ctx.Event.Channel,
+				ctx.Channel,
 				slack.MsgOptionBlocks(
 					slack.NewSectionBlock(
 						slack.NewTextBlockObject(
@@ -167,8 +167,8 @@ func Listen(client *slack.Client) {
 							async.New(func() (async.Unit, error) {
 								err := handle(event.Text, func() RealtimeContext {
 									return RealtimeContext{
-										Client: client,
-										Event:  event,
+										Client:  client,
+										Channel: event.Channel,
 									}
 								})
 								if err != nil {
@@ -178,7 +178,35 @@ func Listen(client *slack.Client) {
 							})
 						}
 					}
+
+				// Slash commands from Slack
+				case socketmode.EventTypeSlashCommand:
+					command, ok := e1.Data.(slack.SlashCommand)
+					if !ok {
+						continue
+					}
+
+					// Make sure Slack knows we acknowledge the event
+					conn.Ack(*e1.Request)
+
+					// Handle the event itself (2nd way of interacting with the bot)
+					action := f.TailString(command.Command)
+					log.Printf("Receiving slash commands /%s from %s\n", action, command.UserName)
+
+					async.New(func() (async.Unit, error) {
+						err := handle(action, func() RealtimeContext {
+							return RealtimeContext{
+								Client:  client,
+								Channel: command.ChannelID,
+							}
+						})
+						if err != nil {
+							log.Fatalln(err)
+						}
+						return async.Done, nil
+					})
 				}
+
 			}
 		}
 	}()
