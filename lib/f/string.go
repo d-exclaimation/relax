@@ -1,6 +1,7 @@
 package f
 
 import (
+	"strconv"
 	"strings"
 	"unicode/utf8"
 )
@@ -19,4 +20,14 @@ func Text(lines ...string) string {
 func TailString(s string) string {
 	_, i := utf8.DecodeRuneInString(s)
 	return s[i:]
+}
+
+// ParseInt converts a string to an int
+func ParseInt(s string) int {
+	marks, err := strconv.Atoi(s)
+
+	if err != nil {
+		return 0
+	}
+	return marks
 }

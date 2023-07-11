@@ -12,6 +12,8 @@ const (
 	OAUTH_APP      = "OAUTH_APP_TOKEN"
 	OAUTH_APP_NAME = "OAUTH_APP_NAME"
 	QUOTE_API_URL  = "QUOTE_API_URL"
+	KV_URL         = "KV_URL"
+	KV_TOKEN       = "KV_TOKEN"
 	CHANNELS       = "CHANNEL_IDS"
 	GO_ENV         = "GO_ENV"
 )
@@ -23,6 +25,8 @@ type Environment struct {
 	mode     string
 	oauthApp string
 	quoteAPI string
+	kvURL    string
+	kvToken  string
 }
 
 // Env is a global environment variables
@@ -39,6 +43,8 @@ func (*Environment) Load() {
 	Env.channels = GetChannelsEnv()
 	Env.oauthApp = GetOAuthAppEnv()
 	Env.quoteAPI = GetQuoteAPIURL()
+	Env.kvURL = GetKVURL()
+	Env.kvToken = GetKVToken()
 }
 
 // OAuth lazily load and returns the OAuth token
@@ -86,6 +92,24 @@ func (e *Environment) QuoteAPI() string {
 	return res
 }
 
+// KVURL lazily load and returns the KV URL
+func (e *Environment) KVURL() string {
+	res := e.kvURL
+	if res == "" {
+		res = GetKVURL()
+	}
+	return res
+}
+
+// KVToken lazily load and returns the KV token
+func (e *Environment) KVToken() string {
+	res := e.kvToken
+	if res == "" {
+		res = GetKVToken()
+	}
+	return res
+}
+
 // IsProduction returns true if the mode is production
 func (e *Environment) IsProduction() bool {
 	return e.Mode() == "production"
@@ -124,4 +148,14 @@ func GetOAuthAppNameEnv() string {
 // GetQuoteAPIURL returns the quote API URL from the environment directly
 func GetQuoteAPIURL() string {
 	return os.Getenv(QUOTE_API_URL)
+}
+
+// GetKVURL returns the KV URL from the environment directly
+func GetKVURL() string {
+	return os.Getenv(KV_URL)
+}
+
+// GetKVToken returns the KV token from the environment directly
+func GetKVToken() string {
+	return os.Getenv(KV_TOKEN)
 }
