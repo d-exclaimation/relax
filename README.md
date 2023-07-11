@@ -11,15 +11,35 @@
 >
 > At some point, I will make it more generic and easier to use.
 
-<!-- <div>
-<img width="32%" src="packages/web/static/banner/glance.png">
-<img width="32%" src="packages/web/static/banner/feeds.png">
-<img width="32%" src="packages/web/static/banner/account.png">
-</div> -->
 
 ## Features
 
-Nothing yet, but I have this photo instead.
+### Actions (Slash & Mention Commands)
+
+<img width="100%" src="assets/reviewer-action.png">
+
+`reviewer` - a random reviewer from the associated development team, take the stress out of choosing a reviewer, and let the bot do it for you.
+
+<img width="100%" src="assets/quote-action.png">
+
+`quote` - a random quote from a famous person, to inspire you to do your best.
+
+<small>
+  <i>
+    Commands can be triggered by either slash commands or by mentioning using the format <code>@relax {command}</code>
+  </i>
+</small>
+
+### Workflow Steps
+
+<img width="100%" src="assets/reviewer-workflow-step.png">
+<img width="100%" src="assets/merge-request-workflow.png">
+
+`Pick a random reviewer` - similar to its action counterpart, but is integrated into Slack Workflow Builder, so you can use it in your own workflow.
+
+---
+
+_That's it unfornately, that's no more features yet, so here's a picture of a dog instead:_
 
 <img width="40%" src="assets/my-hot-sauce.jpg">
 
@@ -27,11 +47,6 @@ Nothing yet, but I have this photo instead.
 <i>I definitely have my priorities straight</i>
 </small>
 
-<!-- **Glance** - a clutter-free, easy to read news feed that you can swipe through.
-
-**Feeds** - a optimised for speed collection of news articles, so you can get the latest news in a jiffy.
-
-**Dashboard** - a one stop place to view all your activities and preferences -->
 
 ## Community & Support
 
@@ -41,10 +56,10 @@ Nothing yet, but I have this photo instead.
 ## Status
  
 - [x] Under development: We are actively working on this
-- [ ] Alpha: We are testing the bot for my personal use.
+- [X] Alpha: We are testing the bot for my personal use.
 - [ ] Public: General Availability for everyone
 
-We are currently in Under Development, and we are working towards Alpha.
+We are currently in Alpha.
 
 ## License
 
@@ -54,7 +69,8 @@ We are currently in Under Development, and we are working towards Alpha.
 
 Special thanks to these amazing projects which help power `relax`:
 
-- [slack-go](https://github.com/slack-go/slack) for basically everything lol
+- [slack-go](https://github.com/slack-go/slack) for providing the Slack API implementation in Go
+- [quotable](https://github.com/lukePeavey/quotable) for providing API for quotes
 
 <br/>
 
