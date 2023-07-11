@@ -65,8 +65,8 @@ func ReviewerWorkflowStepBlocks(reviewee string, channel string) []slack.Block {
 	return blocks
 }
 
-// ReviewerStatusBlock represents the block for a single user in terms of review status
-func ReviewerStatusBlock(user *slack.User) slack.Block {
+// SelfReviewerStatusBlock represents the block for a single user in terms of review status
+func (r *Reviewer) SelfReviewerStatusBlock() slack.Block {
 	// Description and image of the reviewer
 	return slack.NewSectionBlock(
 
@@ -74,24 +74,20 @@ func ReviewerStatusBlock(user *slack.User) slack.Block {
 		slack.NewTextBlockObject(
 			slack.MarkdownType,
 			fmt.Sprintf(
-				"*<github.com/d-exclaimation/relax|%s>*\n%s\n>:microservices: Has done *%d* review(s)\n>:hourglass:%s",
-				user.Profile.RealName,
-				f.IfElse(user.Profile.StatusText != "", user.Profile.StatusText, "_No status_"),
-				0,
-				user.TZLabel,
+				"%s Hey, <@%s>! You have done *%d reviews* so far (_based on data I collected_)",
+				f.IfElse(
+					r.ReviewCount > 25,
+					emoji.OVERWORK,
+					f.IfElse(r.ReviewCount > 10, emoji.TOP_5, emoji.DYING_INSIDE),
+				),
+				r.User.ID,
+				r.ReviewCount,
 			),
 			false,
 			false,
 		),
 		nil,
-
-		// Image of the reviewer
-		slack.NewAccessory(
-			slack.NewImageBlockElement(
-				user.Profile.Image72,
-				user.Profile.RealName,
-			),
-		),
+		nil,
 	)
 }
 

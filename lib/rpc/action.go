@@ -52,23 +52,32 @@ func (r *ActionsRouter[C]) HandleMentionAsync(message string, ctx func() C) asyn
 		})
 		event := args[0]
 
-		log.Printf("Got %s\n", event)
 		for _, route := range r.actions {
 			if route.trigger(event) {
-				return async.Done, route.resolver(strings.Join(args[1:], " "), ctx())
+				err := route.resolver(strings.Join(args[1:], " "), ctx())
+				if err != nil {
+					log.Fatalln(err)
+				}
+				return async.Done, nil
 			}
 		}
 		return async.Done, nil
 	})
 }
 
-func (r *ActionsRouter[C]) HandleCommandAsync(command string, ctx func() C) error {
-	args := strings.Split(strings.TrimSpace(f.TailString(command)), " ")
-	event := args[0]
-	for _, route := range r.actions {
-		if route.trigger(event) {
-			return route.resolver(strings.Join(args[1:], " "), ctx())
+func (r *ActionsRouter[C]) HandleCommandAsync(command string, ctx func() C) async.Task[async.Unit] {
+	return async.New(func() (async.Unit, error) {
+		args := strings.Split(strings.TrimSpace(f.TailString(command)), " ")
+		event := args[0]
+		for _, route := range r.actions {
+			if route.trigger(event) {
+				err := route.resolver(strings.Join(args[1:], " "), ctx())
+				if err != nil {
+					log.Fatalln(err)
+				}
+				return async.Done, nil
+			}
 		}
-	}
-	return nil
+		return async.Done, nil
+	})
 }

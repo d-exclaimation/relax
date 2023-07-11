@@ -70,7 +70,7 @@ func workflows(client *slack.Client) rpc.WorkflowsRouter[RealtimeContext] {
 			OnExecute(func(e *slackevents.WorkflowStepExecuteEvent, ctx RealtimeContext) rpc.WorkflowExecutionResult {
 				user := (*e.WorkflowStep.Inputs)[mr.REVIEWEE_ACTION].Value
 				// channel := (*e.WorkflowStep.Inputs)[mr.CHANNEL_ACTION].Value
-				reviewer, err := mr.FilteredRandomReviewer(ctx.Client, func(u slack.User) bool {
+				reviewer, err := mr.RandomReviewer(ctx.Client, func(u slack.User) bool {
 					return u.IsBot || u.IsRestricted || u.ID == user
 				})
 
@@ -80,7 +80,7 @@ func workflows(client *slack.Client) rpc.WorkflowsRouter[RealtimeContext] {
 
 				return rpc.WorkflowSuccessResult{
 					Outputs: map[string]string{
-						mr.RANDOM_REVIEWER: reviewer.ID,
+						mr.RANDOM_REVIEWER: reviewer.User.ID,
 					},
 				}
 			}),
@@ -118,9 +118,22 @@ func actions(client *slack.Client) rpc.ActionsRouter[RealtimeContext] {
 			return err
 		}),
 
+		// @relax myreviews | Get the status of your reviews
+		rpc.Exact("myreviews", func(event string, ctx RealtimeContext) error {
+			msg, err := mr.SelfReviewerStatus(ctx.UserID)
+			if err != nil {
+				return err
+			}
+			_, _, err = ctx.Client.PostMessage(
+				ctx.ReplyTo,
+				msg,
+			)
+			return err
+		}),
+
 		// @relax reviewer | Pick a random reviewer and send a dedicated message
 		rpc.Contains("reviewer", func(event string, ctx RealtimeContext) error {
-			msg, err := mr.RandomReviewerResolver(
+			msg, err := mr.RandomReviewerWithMessage(
 				ctx.Client,
 				func(u slack.User) bool {
 					return u.IsBot || u.IsRestricted || u.ID == ctx.UserID
