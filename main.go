@@ -3,7 +3,7 @@ package main
 import (
 	"log"
 
-	"d-exclaimation.me/relax/app/realtime"
+	"d-exclaimation.me/relax/app"
 	"d-exclaimation.me/relax/config"
 	"d-exclaimation.me/relax/lib/async"
 	"github.com/slack-go/slack"
@@ -18,7 +18,7 @@ func main() {
 	)
 
 	task1 := async.New(func() (async.Unit, error) {
-		realtime.Listen(client)
+		app.Listen(client)
 		return async.Done, nil
 	})
 
