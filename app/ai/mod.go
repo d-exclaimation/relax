@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"d-exclaimation.me/relax/lib/f"
 	openai "github.com/sashabaranov/go-openai"
 )
 
@@ -18,7 +19,7 @@ func Answer(ai *openai.Client, userId string, event string) (string, error) {
 	background := context.Background()
 
 	prev, ok := history[userId]
-	if !ok || time.Since(prev.start) > 5*time.Minute {
+	if !ok || time.Since(prev.start) > 2*time.Minute {
 		prev = Conversation{
 			start: time.Now(),
 			messages: []openai.ChatCompletionMessage{
@@ -41,7 +42,7 @@ func Answer(ai *openai.Client, userId string, event string) (string, error) {
 
 	resp, err := ai.CreateChatCompletion(background, openai.ChatCompletionRequest{
 		Model:            openai.GPT3Dot5Turbo,
-		MaxTokens:        4000,
+		MaxTokens:        f.SumBy(prev.messages, func(m openai.ChatCompletionMessage) int { return len(m.Content) }) + 3000,
 		FrequencyPenalty: 0.6,
 		Temperature:      0.5,
 		PresencePenalty:  1,
