@@ -6,6 +6,7 @@ import (
 	"io"
 	"time"
 
+	"d-exclaimation.me/relax/config"
 	"d-exclaimation.me/relax/lib/f"
 	openai "github.com/sashabaranov/go-openai"
 )
@@ -55,11 +56,7 @@ func New(token string) *LLM {
 						messages: []openai.ChatCompletionMessage{
 							{
 								Role:    openai.ChatMessageRoleSystem,
-								Content: "The following is a conversation with a Slack assistant bot called relax. The bot is helpful, creative, clever, and very friendly.",
-							},
-							{
-								Role:    openai.ChatMessageRoleSystem,
-								Content: "The following bot should only use this format. *text* represents bold, _text_ represents italic, and ~text~ represents strikethrough. ```code``` represents a code block (no language support).",
+								Content: config.Env.AIContext(),
 							},
 						},
 					}

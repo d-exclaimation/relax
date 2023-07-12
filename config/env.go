@@ -15,20 +15,22 @@ const (
 	KV_URL         = "KV_URL"
 	KV_TOKEN       = "KV_TOKEN"
 	AI_TOKEN       = "AI_TOKEN"
+	AI_CONTEXT     = "AI_CONTEXT"
 	CHANNELS       = "CHANNEL_IDS"
 	GO_ENV         = "GO_ENV"
 )
 
 // Environment is a struct that holds the environment variables
 type Environment struct {
-	oauth    string
-	channels []string
-	mode     string
-	oauthApp string
-	quoteAPI string
-	kvURL    string
-	kvToken  string
-	aiToken  string
+	oauth     string
+	channels  []string
+	mode      string
+	oauthApp  string
+	quoteAPI  string
+	kvURL     string
+	kvToken   string
+	aiToken   string
+	aiContext string
 }
 
 // Env is a global environment variables
@@ -48,6 +50,7 @@ func (*Environment) Load() {
 	Env.kvURL = GetKVURL()
 	Env.kvToken = GetKVToken()
 	Env.aiToken = GetAIToken()
+	Env.aiContext = GetAIContext()
 }
 
 // OAuth lazily load and returns the OAuth token
@@ -122,6 +125,15 @@ func (e *Environment) AIToken() string {
 	return res
 }
 
+// AIContext lazily load and returns the AI context
+func (e *Environment) AIContext() string {
+	res := e.aiContext
+	if res == "" {
+		res = GetAIContext()
+	}
+	return res
+}
+
 // IsProduction returns true if the mode is production
 func (e *Environment) IsProduction() bool {
 	return e.Mode() == "production"
@@ -175,4 +187,9 @@ func GetKVToken() string {
 // GetAIToken returns the AI token from the environment directly
 func GetAIToken() string {
 	return os.Getenv(AI_TOKEN)
+}
+
+// GetAIContext returns the AI context from the environment directly
+func GetAIContext() string {
+	return os.Getenv(AI_CONTEXT)
 }
