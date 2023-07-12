@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"d-exclaimation.me/relax/config"
-	"d-exclaimation.me/relax/lib/f"
 	openai "github.com/sashabaranov/go-openai"
 )
 
@@ -96,7 +95,6 @@ func (l *LLM) StreamChat(userId string, event string) (<-chan string, error) {
 
 	deltas, err := l.model.CreateChatCompletionStream(background, openai.ChatCompletionRequest{
 		Model:           openai.GPT3Dot5Turbo,
-		MaxTokens:       f.SumBy(prev.messages, func(m openai.ChatCompletionMessage) int { return len(m.Content) }) + 3000,
 		Temperature:     1.5,
 		PresencePenalty: 2,
 		Messages:        prev.messages,
