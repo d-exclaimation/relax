@@ -19,7 +19,7 @@ func Answer(ai *openai.Client, userId string, event string) (string, error) {
 	background := context.Background()
 
 	prev, ok := history[userId]
-	if !ok || time.Since(prev.start) > 2*time.Minute {
+	if !ok || time.Since(prev.start) > 5*time.Minute {
 		prev = Conversation{
 			start: time.Now(),
 			messages: []openai.ChatCompletionMessage{
@@ -45,7 +45,7 @@ func Answer(ai *openai.Client, userId string, event string) (string, error) {
 		MaxTokens:        f.SumBy(prev.messages, func(m openai.ChatCompletionMessage) int { return len(m.Content) }) + 3000,
 		FrequencyPenalty: 0.6,
 		Temperature:      0.5,
-		PresencePenalty:  1,
+		PresencePenalty:  2,
 		Messages:         prev.messages,
 		User:             userId,
 	})
