@@ -69,7 +69,7 @@ func (r *ActionsRouter[C]) HandleMentionAsync(message string, ctx func() C) asyn
 		}
 
 		if r.fallback != nil {
-			err := r.fallback(strings.Join(args[1:], " "), ctx())
+			err := r.fallback(strings.Join(args, " "), ctx())
 			if err != nil {
 				log.Fatalln(err)
 			}
