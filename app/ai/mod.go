@@ -6,11 +6,17 @@ import (
 	openai "github.com/sashabaranov/go-openai"
 )
 
-func Answer(ai *openai.Client, event string) (string, error) {
+var history = map[string][]openai.ChatCompletionMessage{}
+
+func Answer(ai *openai.Client, userId string, event string) (string, error) {
 	background := context.Background()
 
 	resp, err := ai.CreateChatCompletion(background, openai.ChatCompletionRequest{
-		Model: openai.GPT3Dot5Turbo,
+		Model:            openai.GPT3Dot5Turbo,
+		MaxTokens:        4000,
+		Temperature:      0.9,
+		FrequencyPenalty: 1,
+		PresencePenalty:  1,
 		Messages: []openai.ChatCompletionMessage{
 			{
 				Role:    openai.ChatMessageRoleSystem,
@@ -30,6 +36,11 @@ func Answer(ai *openai.Client, event string) (string, error) {
 	if err != nil {
 		return "", err
 	}
+
+	history[userId] = append(history[userId], openai.ChatCompletionMessage{
+		Role:    openai.ChatMessageRoleUser,
+		Content: event,
+	})
 
 	answer := resp.Choices[0].Message.Content
 
