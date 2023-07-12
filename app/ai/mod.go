@@ -40,9 +40,10 @@ func Answer(ai *openai.Client, userId string, event string) (string, error) {
 	})
 
 	resp, err := ai.CreateChatCompletion(background, openai.ChatCompletionRequest{
-		Model:     openai.GPT3Dot5Turbo,
-		MaxTokens: 4000,
-		Messages:  prev.messages,
+		Model:            openai.GPT3Dot5Turbo,
+		MaxTokens:        4000,
+		FrequencyPenalty: 1,
+		Messages:         prev.messages,
 	})
 	if err != nil {
 		return "", err

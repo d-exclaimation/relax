@@ -207,7 +207,7 @@ func actions(client *slack.Client) rpc.ActionsRouter[RealtimeContext] {
 				return err
 			}
 
-			answer, err := ai.Answer(ctx.AI, event, ctx.UserID)
+			answer, err := ai.Answer(ctx.AI, ctx.UserID, event)
 
 			if err != nil {
 				return err
