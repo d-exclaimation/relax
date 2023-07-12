@@ -16,15 +16,17 @@ type WeightedValue[T any] struct {
 	Weight int
 }
 
+var source = rand.NewSource(time.Now().UnixNano())
+
 // Weighted returns a random value using a simple weighted random algorithm
 func Weighted[T any](values ...WeightedValue[T]) T {
-	generator := rand.New(rand.NewSource(time.Now().UnixNano()))
+	gen := rand.New(source)
 
 	sum := f.SumBy(values, func(value WeightedValue[T]) int {
 		return value.Weight
 	})
 
-	res := generator.Intn(sum)
+	res := gen.Intn(sum)
 
 	for _, value := range values {
 		if res < value.Weight {

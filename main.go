@@ -4,9 +4,9 @@ import (
 	"log"
 
 	"d-exclaimation.me/relax/app"
+	"d-exclaimation.me/relax/app/ai"
 	"d-exclaimation.me/relax/config"
 	"d-exclaimation.me/relax/lib/async"
-	openai "github.com/sashabaranov/go-openai"
 	"github.com/slack-go/slack"
 )
 
@@ -18,7 +18,7 @@ func main() {
 		slack.OptionAppLevelToken(config.Env.OAuthApp()),
 	)
 
-	ai := openai.NewClient(config.Env.AIToken())
+	ai := ai.New(config.Env.AIToken())
 
 	task1 := async.New(func() (async.Unit, error) {
 		app.Listen(client, ai)

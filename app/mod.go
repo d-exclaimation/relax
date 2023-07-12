@@ -14,7 +14,6 @@ import (
 	"d-exclaimation.me/relax/lib/async"
 	"d-exclaimation.me/relax/lib/f"
 	"d-exclaimation.me/relax/lib/rpc"
-	openai "github.com/sashabaranov/go-openai"
 	"github.com/slack-go/slack"
 	"github.com/slack-go/slack/slackevents"
 	"github.com/slack-go/slack/socketmode"
@@ -33,7 +32,7 @@ type Quote struct {
 
 type RealtimeContext struct {
 	Client  *slack.Client
-	AI      *openai.Client
+	AI      *ai.LLM
 	ReplyTo string
 	UserID  string
 	Channel string
@@ -200,27 +199,29 @@ func actions(client *slack.Client) rpc.ActionsRouter[RealtimeContext] {
 		Else(func(event string, ctx RealtimeContext) error {
 			_, timestamp, err := ctx.Client.PostMessage(
 				ctx.ReplyTo,
-				slack.MsgOptionText(emoji.THINK_THONK+" let me think...", false),
+				slack.MsgOptionText(emoji.THINK_THONK+emoji.THINK_THONK+emoji.THINK_THONK, false),
 			)
 
 			if err != nil {
 				return err
 			}
 
-			answer, err := ai.Answer(ctx.AI, ctx.UserID, event)
+			stream, err := ctx.AI.StreamChat(ctx.UserID, event)
 
 			if err != nil {
 				return err
 			}
 
-			_, _, _, err = ctx.Client.UpdateMessage(
-				ctx.ReplyTo,
-				timestamp,
-				slack.MsgOptionText(
-					fmt.Sprintf("<@%s> %s", ctx.UserID, answer),
-					false,
-				),
-			)
+			for answer := range stream {
+				_, timestamp, _, err = ctx.Client.UpdateMessage(
+					ctx.ReplyTo,
+					timestamp,
+					slack.MsgOptionText(
+						fmt.Sprintf("<@%s> %s", ctx.UserID, answer),
+						false,
+					),
+				)
+			}
 			return err
 		})
 }
@@ -229,7 +230,7 @@ func actions(client *slack.Client) rpc.ActionsRouter[RealtimeContext] {
 // https://api.slack.com/apis/connections/socket
 // SocketMode usually provides faster response times than the Web Events API,
 // and it doesn't require a public endpoint.
-func Listen(client *slack.Client, ai *openai.Client) {
+func Listen(client *slack.Client, ai *ai.LLM) {
 	// Create a new socket mode connection
 	conn := socketmode.New(client)
 

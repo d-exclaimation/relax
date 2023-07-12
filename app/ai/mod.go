@@ -2,6 +2,8 @@ package ai
 
 import (
 	"context"
+	"errors"
+	"io"
 	"time"
 
 	"d-exclaimation.me/relax/lib/f"
@@ -13,54 +15,137 @@ type Conversation struct {
 	messages []openai.ChatCompletionMessage
 }
 
-var history = map[string]Conversation{}
+type LLM struct {
+	model         *openai.Client
+	conversations map[string]Conversation
+	setter        chan struct {
+		userId       string
+		conversation Conversation
+	}
+	getter chan struct {
+		userId string
+		out    chan Conversation
+	}
+}
 
-func Answer(ai *openai.Client, userId string, event string) (string, error) {
-	background := context.Background()
-
-	prev, ok := history[userId]
-	if !ok || time.Since(prev.start) > 5*time.Minute {
-		prev = Conversation{
-			start: time.Now(),
-			messages: []openai.ChatCompletionMessage{
-				{
-					Role:    openai.ChatMessageRoleSystem,
-					Content: "The following is a conversation with a Slack assistant bot called relax. The bot is helpful, creative, clever, and very friendly.",
-				},
-				{
-					Role:    openai.ChatMessageRoleSystem,
-					Content: "The following bot should only use this format. *text* represents bold, _text_ represents italic, and ~text~ represents strikethrough. ```code``` represents a code block (no language support).",
-				},
-			},
-		}
+func New(token string) *LLM {
+	l := LLM{
+		model:         openai.NewClient(token),
+		conversations: make(map[string]Conversation),
+		setter: make(chan struct {
+			userId       string
+			conversation Conversation
+		}),
+		getter: make(chan struct {
+			userId string
+			out    chan Conversation
+		}),
 	}
 
+	go func() {
+		for {
+			select {
+			case s := <-l.setter:
+				l.conversations[s.userId] = s.conversation
+			case g := <-l.getter:
+				conversation, ok := l.conversations[g.userId]
+				if !ok || time.Since(conversation.start) > 5*time.Minute {
+					conversation = Conversation{
+						start: time.Now(),
+						messages: []openai.ChatCompletionMessage{
+							{
+								Role:    openai.ChatMessageRoleSystem,
+								Content: "The following is a conversation with a Slack assistant bot called relax. The bot is helpful, creative, clever, and very friendly.",
+							},
+							{
+								Role:    openai.ChatMessageRoleSystem,
+								Content: "The following bot should only use this format. *text* represents bold, _text_ represents italic, and ~text~ represents strikethrough. ```code``` represents a code block (no language support).",
+							},
+						},
+					}
+				}
+				g.out <- conversation
+			}
+		}
+	}()
+
+	return &l
+}
+
+func (l *LLM) Set(userId string, conversation Conversation) {
+	l.setter <- struct {
+		userId       string
+		conversation Conversation
+	}{userId, conversation}
+}
+
+func (l *LLM) Get(userId string) Conversation {
+	out := make(chan Conversation)
+	l.getter <- struct {
+		userId string
+		out    chan Conversation
+	}{userId, out}
+	return <-out
+}
+
+func (l *LLM) StreamChat(userId string, event string) (<-chan string, error) {
+	background := context.Background()
+
+	prev := l.Get(userId)
 	prev.messages = append(prev.messages, openai.ChatCompletionMessage{
 		Role:    openai.ChatMessageRoleUser,
 		Content: event,
 	})
 
-	resp, err := ai.CreateChatCompletion(background, openai.ChatCompletionRequest{
-		Model:            openai.GPT3Dot5Turbo,
-		MaxTokens:        f.SumBy(prev.messages, func(m openai.ChatCompletionMessage) int { return len(m.Content) }) + 3000,
-		FrequencyPenalty: 0.6,
-		Temperature:      1.5,
-		PresencePenalty:  2,
-		Messages:         prev.messages,
-		User:             userId,
+	deltas, err := l.model.CreateChatCompletionStream(background, openai.ChatCompletionRequest{
+		Model:           openai.GPT3Dot5Turbo,
+		MaxTokens:       f.SumBy(prev.messages, func(m openai.ChatCompletionMessage) int { return len(m.Content) }) + 3000,
+		Temperature:     1.5,
+		PresencePenalty: 2,
+		Messages:        prev.messages,
+		User:            userId,
+		Stream:          true,
 	})
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
-	answer := resp.Choices[0].Message.Content
+	stream := make(chan string)
 
-	prev.messages = append(prev.messages, openai.ChatCompletionMessage{
-		Role:    openai.ChatMessageRoleAssistant,
-		Content: answer,
-	})
+	go func() {
+		answer := ""
+		last := time.Now().Add(-250 * time.Millisecond)
 
-	history[userId] = prev
+		for {
+			response, err := deltas.Recv()
+			if errors.Is(err, io.EOF) {
+				break
+			}
 
-	return answer, nil
+			if err != nil {
+				break
+			}
+
+			answer += response.Choices[0].Delta.Content
+
+			if time.Since(last) > 1500*time.Millisecond {
+				stream <- answer
+				last = time.Now()
+			}
+		}
+
+		time.Sleep(1500*time.Millisecond - time.Since(last))
+		stream <- answer
+
+		prev.messages = append(prev.messages, openai.ChatCompletionMessage{
+			Role:    openai.ChatMessageRoleAssistant,
+			Content: answer,
+		})
+
+		l.Set(userId, prev)
+
+		close(stream)
+	}()
+
+	return stream, nil
 }

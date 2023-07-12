@@ -17,4 +17,5 @@ const (
 	THIS          = ":this:"
 	OVERWORK      = ":overwork:"
 	EARTH         = ":earth_asia:"
+	BRB           = ":brb:"
 )

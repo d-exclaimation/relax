@@ -1,6 +1,7 @@
 package mr
 
 import (
+	"d-exclaimation.me/relax/app/emoji"
 	"d-exclaimation.me/relax/lib/async"
 	"d-exclaimation.me/relax/lib/f"
 	"d-exclaimation.me/relax/lib/kv"
@@ -40,18 +41,18 @@ func RandomReviewer(client *slack.Client, excluding func(slack.User) bool) (Revi
 	}
 
 	filteredMembers := f.Filter(teamMembers, func(user slack.User) bool {
-		return !excluding(user)
+		return !excluding(user) && !user.IsBot && user.Profile.StatusEmoji != emoji.BRB
 	})
 	keys := f.Map(filteredMembers, func(member slack.User) string {
 		return "reviews:" + member.ID
 	})
 	reviews, err := async.New(func() ([]int, error) {
-		data, err := kv.MGet(keys...).Await()
+		data, err := kv.GetAll(keys...).Await()
 		if err != nil {
 			return nil, err
 		}
 
-		return f.Map(data.Result, f.ParseInt), nil
+		return f.Map(data, func(res kv.KVPacket[string]) int { return f.ParseInt(res.Result) }), nil
 	}).Await()
 
 	if err != nil {
@@ -61,7 +62,7 @@ func RandomReviewer(client *slack.Client, excluding func(slack.User) bool) (Revi
 	reviewers := make([]Reviewer, len(filteredMembers))
 	for i, member := range filteredMembers {
 		reviewers[i] = Reviewer{
-			User:        &member,
+			User:        member,
 			ReviewCount: reviews[i],
 		}
 	}
@@ -94,7 +95,7 @@ func SelfReviewerStatus(userID string) (slack.MsgOption, error) {
 	}
 
 	reviewer := Reviewer{
-		User:        &slack.User{ID: userID},
+		User:        slack.User{ID: userID},
 		ReviewCount: f.ParseInt(data.Result),
 	}
 
