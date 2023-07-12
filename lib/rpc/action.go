@@ -36,13 +36,19 @@ func Contains[C any](path string, resolver Resolver[C]) Action[C] {
 }
 
 type ActionsRouter[C any] struct {
-	actions []Action[C]
+	actions  []Action[C]
+	fallback Resolver[C]
 }
 
 func Actions[C any](routes ...Action[C]) ActionsRouter[C] {
 	return ActionsRouter[C]{
 		actions: routes,
 	}
+}
+
+func (r ActionsRouter[C]) Else(resolver Resolver[C]) ActionsRouter[C] {
+	r.fallback = resolver
+	return r
 }
 
 func (r *ActionsRouter[C]) HandleMentionAsync(message string, ctx func() C) async.Task[async.Unit] {
@@ -61,6 +67,14 @@ func (r *ActionsRouter[C]) HandleMentionAsync(message string, ctx func() C) asyn
 				return async.Done, nil
 			}
 		}
+
+		if r.fallback != nil {
+			err := r.fallback(strings.Join(args[1:], " "), ctx())
+			if err != nil {
+				log.Fatalln(err)
+			}
+		}
+
 		return async.Done, nil
 	})
 }

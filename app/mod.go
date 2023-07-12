@@ -7,11 +7,14 @@ import (
 	"log"
 	"net/http"
 
+	"d-exclaimation.me/relax/app/ai"
+	"d-exclaimation.me/relax/app/emoji"
 	"d-exclaimation.me/relax/app/mr"
 	"d-exclaimation.me/relax/config"
 	"d-exclaimation.me/relax/lib/async"
 	"d-exclaimation.me/relax/lib/f"
 	"d-exclaimation.me/relax/lib/rpc"
+	openai "github.com/sashabaranov/go-openai"
 	"github.com/slack-go/slack"
 	"github.com/slack-go/slack/slackevents"
 	"github.com/slack-go/slack/socketmode"
@@ -30,6 +33,7 @@ type Quote struct {
 
 type RealtimeContext struct {
 	Client  *slack.Client
+	AI      *openai.Client
 	ReplyTo string
 	UserID  string
 	Channel string
@@ -132,7 +136,7 @@ func actions(client *slack.Client) rpc.ActionsRouter[RealtimeContext] {
 		}),
 
 		// @relax reviewer | Pick a random reviewer and send a dedicated message
-		rpc.Contains("reviewer", func(event string, ctx RealtimeContext) error {
+		rpc.Exact("reviewer", func(event string, ctx RealtimeContext) error {
 			msg, err := mr.RandomReviewerWithMessage(
 				ctx.Client,
 				func(u slack.User) bool {
@@ -192,14 +196,40 @@ func actions(client *slack.Client) rpc.ActionsRouter[RealtimeContext] {
 			}
 			return nil
 		}),
-	)
+	).
+		Else(func(event string, ctx RealtimeContext) error {
+			_, timestamp, err := ctx.Client.PostMessage(
+				ctx.ReplyTo,
+				slack.MsgOptionText(emoji.THINK_THONK+" let me think...", false),
+			)
+
+			if err != nil {
+				return err
+			}
+
+			answer, err := ai.Answer(ctx.AI, event)
+
+			if err != nil {
+				return err
+			}
+
+			_, _, _, err = ctx.Client.UpdateMessage(
+				ctx.ReplyTo,
+				timestamp,
+				slack.MsgOptionText(
+					fmt.Sprintf("<@%s> %s", ctx.UserID, answer),
+					false,
+				),
+			)
+			return err
+		})
 }
 
 // Listen for events using Slack's Socket Mode (WebSocket / Realtime connecion)
 // https://api.slack.com/apis/connections/socket
 // SocketMode usually provides faster response times than the Web Events API,
 // and it doesn't require a public endpoint.
-func Listen(client *slack.Client) {
+func Listen(client *slack.Client, ai *openai.Client) {
 	// Create a new socket mode connection
 	conn := socketmode.New(client)
 
@@ -264,6 +294,7 @@ func Listen(client *slack.Client) {
 							action.HandleMentionAsync(event.Text, func() RealtimeContext {
 								return RealtimeContext{
 									Client:  client,
+									AI:      ai,
 									ReplyTo: event.Channel,
 									Channel: event.Channel,
 									UserID:  event.User,
@@ -276,6 +307,7 @@ func Listen(client *slack.Client) {
 							workflow.HandleAsync(event, func() RealtimeContext {
 								return RealtimeContext{
 									Client:  client,
+									AI:      ai,
 									ReplyTo: event.WorkflowStep.WorkflowStepExecuteID,
 								}
 							})
@@ -299,6 +331,7 @@ func Listen(client *slack.Client) {
 					workflow.HandleInteractionAsync(e2, func() RealtimeContext {
 						return RealtimeContext{
 							Client:  client,
+							AI:      ai,
 							ReplyTo: e2.ResponseURL,
 							UserID:  e2.User.ID,
 							Channel: e2.Channel.ID,
@@ -321,6 +354,7 @@ func Listen(client *slack.Client) {
 					action.HandleCommandAsync(command.Command, func() RealtimeContext {
 						return RealtimeContext{
 							Client:  client,
+							AI:      ai,
 							ReplyTo: command.ChannelID,
 							UserID:  command.UserID,
 							Channel: command.ChannelID,
