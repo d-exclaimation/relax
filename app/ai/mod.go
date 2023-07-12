@@ -11,13 +11,9 @@ var history = map[string][]openai.ChatCompletionMessage{}
 func Answer(ai *openai.Client, userId string, event string) (string, error) {
 	background := context.Background()
 
-	resp, err := ai.CreateChatCompletion(background, openai.ChatCompletionRequest{
-		Model:            openai.GPT3Dot5Turbo,
-		MaxTokens:        4000,
-		Temperature:      0.9,
-		FrequencyPenalty: 1,
-		PresencePenalty:  1,
-		Messages: []openai.ChatCompletionMessage{
+	prev, ok := history[userId]
+	if ok {
+		prev = []openai.ChatCompletionMessage{
 			{
 				Role:    openai.ChatMessageRoleSystem,
 				Content: "The following is a conversation with a Slack assistant bot called relax. The bot is helpful, creative, clever, and very friendly.",
@@ -26,21 +22,27 @@ func Answer(ai *openai.Client, userId string, event string) (string, error) {
 				Role:    openai.ChatMessageRoleSystem,
 				Content: "The following bot should only use this format. *text* represents bold, _text_ represents italic, and ~text~ represents strikethrough. ```code``` represents a code block (no language support).",
 			},
-			{
-				Role:    openai.ChatMessageRoleSystem,
-				Content: "Make sure that you only output text that relevant, and try to optimise on the length of the response making sure it's not too long regardless of the input. Aim for at most 1000 word output and stop at around 2000 words",
-			},
-			{Role: openai.ChatMessageRoleUser, Content: event},
-		},
+		}
+	}
+
+	messages := append(prev, openai.ChatCompletionMessage{
+		Role:    openai.ChatMessageRoleUser,
+		Content: event,
+	})
+
+	resp, err := ai.CreateChatCompletion(background, openai.ChatCompletionRequest{
+		Model:            openai.GPT3Dot5Turbo,
+		MaxTokens:        4000,
+		Temperature:      0.9,
+		FrequencyPenalty: 1,
+		PresencePenalty:  1,
+		Messages:         messages,
 	})
 	if err != nil {
 		return "", err
 	}
 
-	history[userId] = append(history[userId], openai.ChatCompletionMessage{
-		Role:    openai.ChatMessageRoleUser,
-		Content: event,
-	})
+	history[userId] = messages
 
 	answer := resp.Choices[0].Message.Content
 
