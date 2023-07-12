@@ -44,7 +44,7 @@ func Answer(ai *openai.Client, userId string, event string) (string, error) {
 		Model:            openai.GPT3Dot5Turbo,
 		MaxTokens:        f.SumBy(prev.messages, func(m openai.ChatCompletionMessage) int { return len(m.Content) }) + 3000,
 		FrequencyPenalty: 0.6,
-		Temperature:      0.5,
+		Temperature:      1.5,
 		PresencePenalty:  2,
 		Messages:         prev.messages,
 		User:             userId,
