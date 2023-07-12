@@ -43,15 +43,23 @@ func Answer(ai *openai.Client, userId string, event string) (string, error) {
 		Model:            openai.GPT3Dot5Turbo,
 		MaxTokens:        4000,
 		FrequencyPenalty: 1,
+		Temperature:      0.5,
+		PresencePenalty:  1,
 		Messages:         prev.messages,
+		User:             userId,
 	})
 	if err != nil {
 		return "", err
 	}
 
-	history[userId] = prev
-
 	answer := resp.Choices[0].Message.Content
+
+	prev.messages = append(prev.messages, openai.ChatCompletionMessage{
+		Role:    openai.ChatMessageRoleAssistant,
+		Content: answer,
+	})
+
+	history[userId] = prev
 
 	return answer, nil
 }
