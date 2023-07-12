@@ -25,8 +25,14 @@ func main() {
 		return async.Done, nil
 	})
 
+	task2 := async.New(func() (async.Unit, error) {
+		log.Println(config.Env.AIContext())
+		return async.Done, nil
+	})
+
 	errors := async.AwaitAllUnit(
 		task1,
+		task2,
 	)
 
 	for _, err := range errors {

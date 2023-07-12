@@ -98,7 +98,6 @@ func (l *LLM) StreamChat(userId string, event string) (<-chan string, error) {
 		Temperature:     1.5,
 		PresencePenalty: 2,
 		Messages:        prev.messages,
-		User:            userId,
 		Stream:          true,
 	})
 	if err != nil {
