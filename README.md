@@ -37,6 +37,18 @@
 
 `Pick a random reviewer` - similar to its action counterpart, but is integrated into Slack Workflow Builder, so you can use it in your own workflow.
 
+### AI Powered conversation
+
+<img width="100%" src="assets/ai-example-1.png">
+
+`relax` can respond to messages where it is mentioned (not an action or workflow step) with a unique response powered the same AI that powers [ChatGPT](https://chat.openai.com)
+
+Here's an example of a 100% fully working and inteligent conversation with `relax`, with 0 issue, or any weirdness at all:
+
+
+<img width="100%" src="assets/ai-example-2.png">
+
+
 ---
 
 _That's it unfornately, that's no more features yet, so here's a picture of a dog instead:_
@@ -71,6 +83,7 @@ Special thanks to these amazing projects which help power `relax`:
 
 - [slack-go](https://github.com/slack-go/slack) for providing the Slack API implementation in Go
 - [quotable](https://github.com/lukePeavey/quotable) for providing API for quotes
+- [OpenAI](https://openai.com) for the amazing GPT-3.5 and GPT-4 models
 
 <br/>
 
