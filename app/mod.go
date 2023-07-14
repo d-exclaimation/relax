@@ -2,16 +2,13 @@ package app
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"log"
-	"net/http"
 
 	"d-exclaimation.me/relax/app/ai"
 	"d-exclaimation.me/relax/app/emoji"
 	"d-exclaimation.me/relax/app/mr"
-	"d-exclaimation.me/relax/config"
-	"d-exclaimation.me/relax/lib/async"
+	"d-exclaimation.me/relax/app/quote"
 	"d-exclaimation.me/relax/lib/f"
 	"d-exclaimation.me/relax/lib/rpc"
 	"github.com/slack-go/slack"
@@ -19,18 +16,7 @@ import (
 	"github.com/slack-go/slack/socketmode"
 )
 
-type Quote struct {
-	ID           string   `json:"_id"`
-	Content      string   `json:"content"`
-	Author       string   `json:"author"`
-	Tags         []string `json:"tags"`
-	AuthorSlug   string   `json:"authorSlug"`
-	Length       int      `json:"length"`
-	DateAdded    string   `json:"dateAdded"`
-	DateModified string   `json:"dateModified"`
-}
-
-type RealtimeContext struct {
+type AppContext struct {
 	Client  *slack.Client
 	AI      *ai.LLM
 	ReplyTo string
@@ -39,16 +25,16 @@ type RealtimeContext struct {
 }
 
 // Define available workflow steps using the common rpc interface
-func workflows(client *slack.Client) rpc.WorkflowsRouter[RealtimeContext] {
-	return rpc.Workflows[RealtimeContext](
+func workflows(client *slack.Client) rpc.WorkflowsRouter[AppContext] {
+	return rpc.Workflows[AppContext](
 		client,
 
 		// @relax random_reviewer | Pick a random reviewer
-		rpc.Step[RealtimeContext]("random_reviewer").
-			OnEdit(func(e slack.InteractionCallback, ctx RealtimeContext) []slack.Block {
+		rpc.Step[AppContext]("random_reviewer").
+			OnEdit(func(e slack.InteractionCallback, ctx AppContext) []slack.Block {
 				return mr.ReviewerWorkflowStepBlocks(e.User.ID, e.Channel.ID)
 			}).
-			OnSave(func(e slack.InteractionCallback, ctx RealtimeContext) rpc.WorkflowInOut {
+			OnSave(func(e slack.InteractionCallback, ctx AppContext) rpc.WorkflowInOut {
 				values := e.View.State.Values
 				user := values[mr.REVIEWEE_INPUT][mr.REVIEWEE_ACTION].SelectedOption.Value
 				channel := values[mr.CHANNEL_INPUT][mr.CHANNEL_ACTION].SelectedConversation
@@ -70,7 +56,7 @@ func workflows(client *slack.Client) rpc.WorkflowsRouter[RealtimeContext] {
 					},
 				}
 			}).
-			OnExecute(func(e *slackevents.WorkflowStepExecuteEvent, ctx RealtimeContext) rpc.WorkflowExecutionResult {
+			OnExecute(func(e *slackevents.WorkflowStepExecuteEvent, ctx AppContext) rpc.WorkflowExecutionResult {
 				user := (*e.WorkflowStep.Inputs)[mr.REVIEWEE_ACTION].Value
 				// channel := (*e.WorkflowStep.Inputs)[mr.CHANNEL_ACTION].Value
 				reviewer, err := mr.RandomReviewer(ctx.Client, func(u slack.User) bool {
@@ -91,10 +77,10 @@ func workflows(client *slack.Client) rpc.WorkflowsRouter[RealtimeContext] {
 }
 
 // Define the actions for the mention / commands using the common rpc interface
-func actions(client *slack.Client) rpc.ActionsRouter[RealtimeContext] {
-	return rpc.Actions[RealtimeContext](
+func actions(client *slack.Client) rpc.ActionsRouter[AppContext] {
+	return rpc.Actions[AppContext](
 		// @relax hello | Say hello
-		rpc.Contains("hello", func(event string, ctx RealtimeContext) error {
+		rpc.Contains("hello", func(event string, ctx AppContext) error {
 			_, _, err := ctx.Client.PostMessage(
 				ctx.ReplyTo,
 				slack.MsgOptionText("Hello!", false),
@@ -103,7 +89,7 @@ func actions(client *slack.Client) rpc.ActionsRouter[RealtimeContext] {
 		}),
 
 		// @relax vibecheck | Vibe check
-		rpc.Exact("vibecheck", func(event string, ctx RealtimeContext) error {
+		rpc.Exact("vibecheck", func(event string, ctx AppContext) error {
 			_, _, err := ctx.Client.PostMessage(
 				ctx.ReplyTo,
 				slack.MsgOptionBlocks(
@@ -121,9 +107,9 @@ func actions(client *slack.Client) rpc.ActionsRouter[RealtimeContext] {
 			return err
 		}),
 
-		// @relax myreviews | Get the status of your reviews
-		rpc.Exact("myreviews", func(event string, ctx RealtimeContext) error {
-			msg, err := mr.SelfReviewerStatus(ctx.UserID)
+		// @relax stats | Get the status and statistics of your reviews
+		rpc.Exact("stats", func(event string, ctx AppContext) error {
+			msg, err := mr.SelfReviewerStatus(ctx.Client, ctx.UserID)
 			if err != nil {
 				return err
 			}
@@ -135,7 +121,7 @@ func actions(client *slack.Client) rpc.ActionsRouter[RealtimeContext] {
 		}),
 
 		// @relax reviewer | Pick a random reviewer and send a dedicated message
-		rpc.Exact("reviewer", func(event string, ctx RealtimeContext) error {
+		rpc.Exact("reviewer", func(event string, ctx AppContext) error {
 			msg, err := mr.RandomReviewerWithMessage(
 				ctx.Client,
 				func(u slack.User) bool {
@@ -153,31 +139,18 @@ func actions(client *slack.Client) rpc.ActionsRouter[RealtimeContext] {
 		}),
 
 		// @relax quote | Get a random quote and send a dedicated message
-		rpc.Contains("quote", func(event string, ctx RealtimeContext) error {
-			task := async.New(func() ([]Quote, error) {
-				data := make([]Quote, 1)
-				resp, err := http.Get(config.Env.QuoteAPI() + "/quotes/random?limit=1")
-				if err != nil {
-					return data, err
-				}
-				defer resp.Body.Close()
-
-				json.NewDecoder(resp.Body).Decode(&data)
-				return data, nil
-			})
-			quotes, err := task.Await()
+		rpc.Contains("quote", func(event string, ctx AppContext) error {
+			quote, err := quote.Random().Await()
 			if err != nil {
 				return err
 			}
-
-			quote := quotes[0]
 
 			_, _, err = ctx.Client.PostMessage(
 				ctx.ReplyTo,
 				slack.MsgOptionBlocks(
 					slack.NewSectionBlock(
 						slack.NewTextBlockObject(
-							"mrkdwn",
+							slack.MarkdownType,
 							f.Text(
 								fmt.Sprintf("> _%s_", quote.Content),
 								fmt.Sprintf("> • _%s_", quote.Author),
@@ -196,7 +169,8 @@ func actions(client *slack.Client) rpc.ActionsRouter[RealtimeContext] {
 			return nil
 		}),
 	).
-		Else(func(event string, ctx RealtimeContext) error {
+		// @relax | Default action (AI conversation)
+		Else(func(event string, ctx AppContext) error {
 			_, timestamp, err := ctx.Client.PostMessage(
 				ctx.ReplyTo,
 				slack.MsgOptionText(emoji.THINK_THONK+emoji.THINK_THONK+emoji.THINK_THONK, false),
@@ -292,8 +266,8 @@ func Listen(client *slack.Client, ai *ai.LLM) {
 						case *slackevents.AppMentionEvent:
 							log.Printf("Receiving mentions \"%s\" from %s\n", event.Text, event.User)
 
-							action.HandleMentionAsync(event.Text, func() RealtimeContext {
-								return RealtimeContext{
+							action.HandleMentionAsync(event.Text, func() AppContext {
+								return AppContext{
 									Client:  client,
 									AI:      ai,
 									ReplyTo: event.Channel,
@@ -305,8 +279,8 @@ func Listen(client *slack.Client, ai *ai.LLM) {
 						case *slackevents.WorkflowStepExecuteEvent:
 							log.Printf("Receiving workflow step execute event from %s\n", event.CallbackID)
 
-							workflow.HandleAsync(event, func() RealtimeContext {
-								return RealtimeContext{
+							workflow.HandleAsync(event, func() AppContext {
+								return AppContext{
 									Client:  client,
 									AI:      ai,
 									ReplyTo: event.WorkflowStep.WorkflowStepExecuteID,
@@ -329,8 +303,8 @@ func Listen(client *slack.Client, ai *ai.LLM) {
 					log.Printf("Receiving interaction callback from %s\n", e2.CallbackID)
 
 					// Handle the workflow related event (3rd way of interacting with the bot)
-					workflow.HandleInteractionAsync(e2, func() RealtimeContext {
-						return RealtimeContext{
+					workflow.HandleInteractionAsync(e2, func() AppContext {
+						return AppContext{
 							Client:  client,
 							AI:      ai,
 							ReplyTo: e2.ResponseURL,
@@ -352,8 +326,8 @@ func Listen(client *slack.Client, ai *ai.LLM) {
 					// Handle the event itself (2nd way of interacting with the bot)
 					log.Printf("Receiving slash commands %s from %s<%s>\n", command.Command, command.UserName, command.UserID)
 
-					action.HandleCommandAsync(command.Command, func() RealtimeContext {
-						return RealtimeContext{
+					action.HandleCommandAsync(command.Command, func() AppContext {
+						return AppContext{
 							Client:  client,
 							AI:      ai,
 							ReplyTo: command.ChannelID,

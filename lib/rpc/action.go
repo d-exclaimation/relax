@@ -56,6 +56,11 @@ func (r *ActionsRouter[C]) HandleMentionAsync(message string, ctx func() C) asyn
 		args := f.Filter(strings.Split(strings.TrimSpace(message), " "), func(word string) bool {
 			return !strings.HasPrefix(word, "<@") && !strings.HasSuffix(word, ">")
 		})
+
+		if len(args) < 1 {
+			return async.Done, nil
+		}
+
 		event := args[0]
 
 		for _, route := range r.actions {

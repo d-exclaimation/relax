@@ -65,6 +65,108 @@ func ReviewerWorkflowStepBlocks(reviewee string, channel string) []slack.Block {
 	return blocks
 }
 
+func (fr *FullReviewerProfile) ReviewerFullProfileBlocks() []slack.Block {
+	return []slack.Block{
+		slack.NewSectionBlock(
+			slack.NewTextBlockObject(
+				slack.MarkdownType,
+				fmt.Sprintf(
+					"%s Hey, <@%s>! This is your *statistics* so far (_only for data I collected_)",
+					emoji.PARTY_DENO,
+					fr.User.ID,
+				),
+				false,
+				false,
+			),
+			nil,
+			nil,
+		),
+
+		slack.NewHeaderBlock(
+			slack.NewTextBlockObject(
+				slack.PlainTextType,
+				"Reviewer profile",
+				false,
+				false,
+			),
+		),
+
+		slack.NewSectionBlock(
+			slack.NewTextBlockObject(
+				slack.MarkdownType,
+				f.Text(
+					fmt.Sprintf("%s *%s*", emoji.SATURDAY, fr.User.Profile.RealName),
+					fmt.Sprintf(
+						"> • Is *%savailable* %s",
+						f.IfElse(fr.IsAvailable, "", "not "),
+						f.IfElse(fr.IsAvailable, emoji.DONE, emoji.X),
+					),
+					fmt.Sprintf("> • Done *%d review(s)* %s",
+						fr.ReviewCount,
+						f.IfElse(fr.ReviewCount <= 0, emoji.NOT_TOP_5, emoji.TOP_5),
+					),
+					fmt.Sprintf(
+						"> • *%s* %s",
+						fr.User.TZLabel,
+						emoji.EARTH,
+					),
+				),
+				false,
+				false,
+			),
+			nil,
+			slack.NewAccessory(
+				slack.NewImageBlockElement(
+					fr.User.Profile.Image72,
+					fr.User.Profile.RealName,
+				),
+			),
+		),
+
+		slack.NewHeaderBlock(
+			slack.NewTextBlockObject(
+				slack.PlainTextType,
+				"Next reviewer odds",
+				false,
+				false,
+			),
+		),
+
+		slack.NewSectionBlock(
+			slack.NewTextBlockObject(
+				slack.MarkdownType,
+				"_Odds to be the reviewer for each persons' next merge request_",
+				false,
+				false,
+			),
+			f.Map(fr.Odds, func(odd Reviewee) *slack.TextBlockObject {
+				return slack.NewTextBlockObject(
+					slack.MarkdownType,
+					f.Text(
+						fmt.Sprintf("*%s's*", odd.User.Profile.RealName),
+						fmt.Sprintf(
+							"%d%% %s",
+							odd.ReviewerChance,
+							f.IfElse(
+								odd.ReviewerChance < 33,
+								emoji.SHAME,
+								f.IfElse(
+									odd.ReviewerChance < 67,
+									emoji.CATROLL,
+									emoji.APPROVED_2,
+								),
+							),
+						),
+					),
+					false,
+					false,
+				)
+			}),
+			nil,
+		),
+	}
+}
+
 // SelfReviewerStatusBlock represents the block for a single user in terms of review status
 func (r *Reviewer) SelfReviewerStatusBlock() slack.Block {
 	// Description and image of the reviewer

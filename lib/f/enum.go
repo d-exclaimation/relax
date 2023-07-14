@@ -121,3 +121,23 @@ func Sliced[T any](arr []T, start uint, end uint) []T {
 func Take[T any](arr []T, n uint) []T {
 	return Sliced[T](arr, 0, n)
 }
+
+// First returns a value with the first element that matches a condition
+func First[T any](arr []T, fn func(T) bool) (T, bool) {
+	for _, item := range arr {
+		if fn(item) {
+			return item, true
+		}
+	}
+	return arr[0], false
+}
+
+// FindIndexOf returns a value with the first element that matches a condition
+func FindIndexOf[T any](arr []T, fn func(T) bool) (T, int, bool) {
+	for i, item := range arr {
+		if fn(item) {
+			return item, i, true
+		}
+	}
+	return arr[0], -1, false
+}

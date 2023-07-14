@@ -10,11 +10,13 @@ import (
 	openai "github.com/sashabaranov/go-openai"
 )
 
+// Conversation is a struct that holds the conversation history for the LLM to use as context
 type Conversation struct {
 	start    time.Time
 	messages []openai.ChatCompletionMessage
 }
 
+// LLM is a struct that holds the AI LLM model and act as a concurrent-safe actor to handle the conversation history
 type LLM struct {
 	model         *openai.Client
 	conversations map[string]Conversation
@@ -28,6 +30,7 @@ type LLM struct {
 	}
 }
 
+// New is a constructor for the LLM struct and run the actor
 func New(token string) *LLM {
 	l := LLM{
 		model:         openai.NewClient(token),
@@ -68,6 +71,7 @@ func New(token string) *LLM {
 	return &l
 }
 
+// Set is a setter for the conversation history through the actor
 func (l *LLM) Set(userId string, conversation Conversation) {
 	l.setter <- struct {
 		userId       string
@@ -75,6 +79,7 @@ func (l *LLM) Set(userId string, conversation Conversation) {
 	}{userId, conversation}
 }
 
+// Get is a getter for the conversation history through the actor
 func (l *LLM) Get(userId string) Conversation {
 	out := make(chan Conversation)
 	l.getter <- struct {
@@ -84,6 +89,21 @@ func (l *LLM) Get(userId string) Conversation {
 	return <-out
 }
 
+// ClearHistory is a function to clear the conversation history for a user through the actor
+func (l *LLM) ClearHistory(userId string) {
+	l.Set(userId, Conversation{
+		start: time.Now(),
+		messages: []openai.ChatCompletionMessage{
+			{
+				Role:    openai.ChatMessageRoleSystem,
+				Content: config.Env.AIContext(),
+			},
+		},
+	})
+}
+
+// StreamChat is a function to stream the chat response from the AI LLM model
+// It returns a channel of string that will be batched and throlled for every 1.5 seconds (40 emits/minute)
 func (l *LLM) StreamChat(userId string, event string) (<-chan string, error) {
 	background := context.Background()
 
