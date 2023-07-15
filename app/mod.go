@@ -7,6 +7,7 @@ import (
 
 	"d-exclaimation.me/relax/app/ai"
 	"d-exclaimation.me/relax/app/emoji"
+	"d-exclaimation.me/relax/app/memes"
 	"d-exclaimation.me/relax/app/mr"
 	"d-exclaimation.me/relax/app/quote"
 	"d-exclaimation.me/relax/lib/f"
@@ -139,7 +140,7 @@ func actions(client *slack.Client) rpc.ActionsRouter[AppContext] {
 		}),
 
 		// @relax quote | Get a random quote and send a dedicated message
-		rpc.Contains("quote", func(event string, ctx AppContext) error {
+		rpc.Exact("quote", func(event string, ctx AppContext) error {
 			quote, err := quote.Random().Await()
 			if err != nil {
 				return err
@@ -163,10 +164,55 @@ func actions(client *slack.Client) rpc.ActionsRouter[AppContext] {
 					),
 				),
 			)
+			return err
+		}),
+
+		// @relax meme | Get a random meme and send a dedicated message
+		rpc.Exact("meme", func(event string, ctx AppContext) error {
+			meme, err := memes.Random().Await()
 			if err != nil {
 				return err
 			}
-			return nil
+
+			_, _, err = ctx.Client.PostMessage(
+				ctx.ReplyTo,
+				slack.MsgOptionBlocks(
+					slack.NewImageBlock(
+						meme.URL,
+						meme.Title,
+						"",
+						nil,
+					),
+
+					slack.NewSectionBlock(
+						slack.NewTextBlockObject(
+							slack.MarkdownType,
+							fmt.Sprintf(
+								"%s <%s|%s>",
+								emoji.AWS,
+								meme.PostLink,
+								meme.Title,
+							),
+							false,
+							false,
+						),
+						nil,
+						nil,
+					),
+
+					slack.NewContextBlock(
+						"",
+						slack.NewTextBlockObject(
+							slack.PlainTextType,
+							fmt.Sprintf("Author: %s", meme.Author),
+							false,
+							false,
+						),
+					),
+				),
+			)
+
+			return err
 		}),
 	).
 		// @relax | Default action (AI conversation)
@@ -324,7 +370,7 @@ func Listen(client *slack.Client, ai *ai.LLM) {
 					conn.Ack(*e1.Request)
 
 					// Handle the event itself (2nd way of interacting with the bot)
-					log.Printf("Receiving slash commands %s from %s<%s>\n", command.Command, command.UserName, command.UserID)
+					log.Printf("Receiving slash commands %s from %s <@%s>\n", command.Command, command.UserName, command.UserID)
 
 					action.HandleCommandAsync(command.Command, func() AppContext {
 						return AppContext{

@@ -12,6 +12,7 @@ const (
 	OAUTH_APP      = "OAUTH_APP_TOKEN"
 	OAUTH_APP_NAME = "OAUTH_APP_NAME"
 	QUOTE_API_URL  = "QUOTE_API_URL"
+	MEME_API_URL   = "MEME_API_URL"
 	KV_URL         = "KV_URL"
 	KV_TOKEN       = "KV_TOKEN"
 	AI_TOKEN       = "AI_TOKEN"
@@ -27,6 +28,7 @@ type Environment struct {
 	mode      string
 	oauthApp  string
 	quoteAPI  string
+	memeAPI   string
 	kvURL     string
 	kvToken   string
 	aiToken   string
@@ -51,6 +53,7 @@ func (*Environment) Load() {
 	Env.kvToken = GetKVToken()
 	Env.aiToken = GetAIToken()
 	Env.aiContext = GetAIContext()
+	Env.memeAPI = GetMemeAPIURL()
 }
 
 // OAuth lazily load and returns the OAuth token
@@ -94,6 +97,15 @@ func (e *Environment) QuoteAPI() string {
 	res := e.quoteAPI
 	if res == "" {
 		res = GetQuoteAPIURL()
+	}
+	return res
+}
+
+// MemeAPI lazily load and returns the meme API URL
+func (e *Environment) MemeAPI() string {
+	res := e.memeAPI
+	if res == "" {
+		res = GetMemeAPIURL()
 	}
 	return res
 }
@@ -172,6 +184,11 @@ func GetOAuthAppNameEnv() string {
 // GetQuoteAPIURL returns the quote API URL from the environment directly
 func GetQuoteAPIURL() string {
 	return os.Getenv(QUOTE_API_URL)
+}
+
+// GetMemeAPIURL returns the meme API URL from the environment directly
+func GetMemeAPIURL() string {
+	return os.Getenv(MEME_API_URL)
 }
 
 // GetKVURL returns the KV URL from the environment directly
