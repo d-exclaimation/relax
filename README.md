@@ -24,6 +24,10 @@
 
 `quote` - a random quote from a famous person, to inspire you to do your best.
 
+<img width="100%" src="assets/meme-action.png">
+
+`meme` - a random meme from reddit, to make you laugh.
+
 <small>
   <i>
     Commands can be triggered by either slash commands or by mentioning using the format <code>@relax {command}</code>
@@ -83,6 +87,7 @@ Special thanks to these amazing projects which help power `relax`:
 
 - [slack-go](https://github.com/slack-go/slack) for providing the Slack API implementation in Go
 - [quotable](https://github.com/lukePeavey/quotable) for providing API for quotes
+- [meme-api](https://github.com/D3vd/Meme_Api) for providing an API to get memes from reddit
 - [OpenAI](https://openai.com) for the amazing GPT-3.5 and GPT-4 models
 
 <br/>
