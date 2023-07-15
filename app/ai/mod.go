@@ -115,7 +115,7 @@ func (l *LLM) StreamChat(userId string, event string) (<-chan string, error) {
 
 	deltas, err := l.model.CreateChatCompletionStream(background, openai.ChatCompletionRequest{
 		Model:           openai.GPT3Dot5Turbo,
-		Temperature:     1.5,
+		Temperature:     1,
 		PresencePenalty: 2,
 		Messages:        prev.messages,
 		Stream:          true,

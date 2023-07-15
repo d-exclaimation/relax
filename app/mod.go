@@ -18,11 +18,12 @@ import (
 )
 
 type AppContext struct {
-	Client  *slack.Client
-	AI      *ai.LLM
-	ReplyTo string
-	UserID  string
-	Channel string
+	Client   *slack.Client
+	AI       *ai.LLM
+	ReplyTo  string
+	UserID   string
+	Channel  string
+	ThreadTS string
 }
 
 // Define available workflow steps using the common rpc interface
@@ -219,7 +220,16 @@ func actions(client *slack.Client) rpc.ActionsRouter[AppContext] {
 		Else(func(event string, ctx AppContext) error {
 			_, timestamp, err := ctx.Client.PostMessage(
 				ctx.ReplyTo,
-				slack.MsgOptionText(emoji.THINK_THONK+emoji.THINK_THONK+emoji.THINK_THONK, false),
+				f.IfElse(
+					ctx.ThreadTS != "",
+					[]slack.MsgOption{
+						slack.MsgOptionText(emoji.THINK_THONK+emoji.THINK_THONK+emoji.THINK_THONK, false),
+						slack.MsgOptionTS(ctx.ThreadTS),
+					},
+					[]slack.MsgOption{
+						slack.MsgOptionText(emoji.THINK_THONK+emoji.THINK_THONK+emoji.THINK_THONK, false),
+					},
+				)...,
 			)
 
 			if err != nil {
@@ -236,10 +246,22 @@ func actions(client *slack.Client) rpc.ActionsRouter[AppContext] {
 				_, timestamp, _, err = ctx.Client.UpdateMessage(
 					ctx.ReplyTo,
 					timestamp,
-					slack.MsgOptionText(
-						fmt.Sprintf("<@%s> %s", ctx.UserID, answer),
-						false,
-					),
+					f.IfElse(
+						ctx.ThreadTS != "",
+						[]slack.MsgOption{
+							slack.MsgOptionText(
+								fmt.Sprintf("<@%s> %s", ctx.UserID, answer),
+								false,
+							),
+							slack.MsgOptionTS(ctx.ThreadTS),
+						},
+						[]slack.MsgOption{
+							slack.MsgOptionText(
+								fmt.Sprintf("<@%s> %s", ctx.UserID, answer),
+								false,
+							),
+						},
+					)...,
 				)
 			}
 			return err
@@ -311,14 +333,14 @@ func Listen(client *slack.Client, ai *ai.LLM) {
 						// Handling app mentions (1st way of interacting with the bot)
 						case *slackevents.AppMentionEvent:
 							log.Printf("Receiving mentions \"%s\" from %s\n", event.Text, event.User)
-
 							action.HandleMentionAsync(event.Text, func() AppContext {
 								return AppContext{
-									Client:  client,
-									AI:      ai,
-									ReplyTo: event.Channel,
-									Channel: event.Channel,
-									UserID:  event.User,
+									Client:   client,
+									AI:       ai,
+									ReplyTo:  event.Channel,
+									ThreadTS: event.ThreadTimeStamp,
+									Channel:  event.Channel,
+									UserID:   event.User,
 								}
 							})
 
