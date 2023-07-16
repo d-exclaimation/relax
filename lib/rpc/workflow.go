@@ -139,38 +139,42 @@ func (r *WorkflowsRouter[C]) HandleInteractionAsync(
 ) async.Task[async.Unit] {
 	return async.New(func() (async.Unit, error) {
 		for _, step := range r.steps {
-			if step.callbackID == event.CallbackID {
-				err := error(nil)
-				c := ctx()
+			err := error(nil)
+			c := ctx()
 
-				switch event.Type {
-				case slack.InteractionTypeWorkflowStepEdit:
-					res := step.edit(event, c)
-					_, err = r.client.OpenView(
-						event.TriggerID,
-						slack.NewConfigurationModalRequest(
-							slack.Blocks{
-								BlockSet: res,
-							},
-							"",
-							"",
-						).ModalViewRequest,
-					)
-
-				case slack.InteractionTypeViewSubmission:
-					res := step.save(event, c)
-					err = r.client.SaveWorkflowStepConfiguration(
-						event.WorkflowStep.WorkflowID,
-						res.In,
-						res.Out,
-					)
+			switch event.Type {
+			case slack.InteractionTypeWorkflowStepEdit:
+				if step.callbackID != event.CallbackID {
+					continue
 				}
+				res := step.edit(event, c)
+				_, err = r.client.OpenView(
+					event.TriggerID,
+					slack.NewConfigurationModalRequest(
+						slack.Blocks{
+							BlockSet: res,
+						},
+						step.callbackID,
+						"",
+					).ModalViewRequest,
+				)
 
-				if err != nil {
-					log.Fatalln(err)
+			case slack.InteractionTypeViewSubmission:
+				if event.View.PrivateMetadata != step.callbackID {
+					continue
 				}
-				return async.Done, nil
+				res := step.save(event, c)
+				err = r.client.SaveWorkflowStepConfiguration(
+					event.WorkflowStep.WorkflowStepEditID,
+					res.In,
+					res.Out,
+				)
 			}
+
+			if err != nil {
+				log.Fatalln(err)
+			}
+			return async.Done, nil
 		}
 		return async.Done, nil
 	})
