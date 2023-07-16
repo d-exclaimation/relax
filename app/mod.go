@@ -375,7 +375,7 @@ func Listen(client *slack.Client, ai *ai.LLM) {
 						return AppContext{
 							Client:  client,
 							AI:      ai,
-							ReplyTo: e2.ResponseURL,
+							ReplyTo: e2.WorkflowStep.WorkflowID,
 							UserID:  e2.User.ID,
 							Channel: e2.Channel.ID,
 						}

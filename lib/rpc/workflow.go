@@ -160,7 +160,7 @@ func (r *WorkflowsRouter[C]) HandleInteractionAsync(
 				case slack.InteractionTypeViewSubmission:
 					res := step.save(event, c)
 					err = r.client.SaveWorkflowStepConfiguration(
-						event.WorkflowStep.WorkflowStepEditID,
+						event.WorkflowStep.WorkflowID,
 						res.In,
 						res.Out,
 					)
