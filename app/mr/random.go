@@ -34,6 +34,44 @@ func randomlyPickReviewer(reviewers []Reviewer) Reviewer {
 	return random.Weighted[Reviewer](values...)
 }
 
+// ReadonlyRandomReviewer picks a random reviewer from the team, excluding the given user
+func ReadonlyRandomReviewer(client *slack.Client, excluding func(slack.User) bool) (Reviewer, error) {
+	teamMembers, err := GetMembers(client, "team").Await()
+
+	if err != nil {
+		return Reviewer{}, err
+	}
+
+	filteredMembers := f.Filter(teamMembers, func(user slack.User) bool {
+		return !excluding(user) && !user.IsBot && user.Profile.StatusEmoji != emoji.BRB
+	})
+	keys := f.Map(filteredMembers, func(member slack.User) string {
+		return "reviews:" + member.ID
+	})
+	reviews, err := async.New(func() ([]int, error) {
+		data, err := kv.GetAll(keys...).Await()
+		if err != nil {
+			return nil, err
+		}
+
+		return f.Map(data, func(res kv.KVPacket[string]) int { return f.ParseInt(res.Result) }), nil
+	}).Await()
+
+	if err != nil {
+		return Reviewer{}, nil
+	}
+
+	reviewers := make([]Reviewer, len(filteredMembers))
+	for i, member := range filteredMembers {
+		reviewers[i] = Reviewer{
+			User:        member,
+			ReviewCount: reviews[i],
+		}
+	}
+	reviewer := randomlyPickReviewer(reviewers)
+	return reviewer, nil
+}
+
 // RandomReviewer picks a random reviewer from the team, excluding the given user
 func RandomReviewer(client *slack.Client, excluding func(slack.User) bool) (Reviewer, error) {
 	teamMembers, err := GetMembers(client, "team").Await()

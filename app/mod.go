@@ -38,7 +38,7 @@ func workflows(client *slack.Client) rpc.WorkflowsRouter[AppContext] {
 			}).
 			OnSave(func(e slack.InteractionCallback, ctx AppContext) rpc.WorkflowInOut {
 				values := e.View.State.Values
-				user := values[mr.REVIEWEE_INPUT][mr.REVIEWEE_ACTION].SelectedOption.Value
+				user := values[mr.REVIEWEE_INPUT][mr.REVIEWEE_ACTION].SelectedUser
 				channel := values[mr.CHANNEL_INPUT][mr.CHANNEL_ACTION].SelectedConversation
 				return rpc.WorkflowInOut{
 					In: &slack.WorkflowStepInputs{
