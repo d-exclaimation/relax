@@ -1,9 +1,9 @@
 <img src="assets/banner.png">
 
-# `relax`
+# relax
 
 
-[`relax`](https://spotlight.d-exclaimation.me) is a multi-purpose [Slack](https://slack.com) built for my full-year project team management. 
+[relax](https://spotlight.d-exclaimation.me) is a multi-purpose [Slack](https://slack.com) built for my full-year project team management. 
 
 > **Warning**
 >
@@ -45,9 +45,9 @@
 
 <img width="100%" src="assets/ai-example-1.png">
 
-`relax` can respond to messages where it is mentioned (not an action or workflow step) with a unique response powered the same AI that powers [ChatGPT](https://chat.openai.com)
+**relax** can respond to messages where it is mentioned (not an action or workflow step) with a unique response powered the same AI that powers [ChatGPT](https://chat.openai.com)
 
-Here's an example of a 100% fully working and inteligent conversation with `relax`, with 0 issue, or any weirdness at all:
+Here's an example of a 100% fully working and inteligent conversation with **relax**, with 0 issue, or any weirdness at all:
 
 
 <img width="100%" src="assets/ai-example-2.png">
@@ -79,11 +79,11 @@ We are currently in Alpha.
 
 ## License
 
-`relax` is licensed under the [MPL-2.0](/LICENSE) license.
+**relax** is licensed under the [MPL-2.0](/LICENSE) license.
 
 ## Acknowledgements
 
-Special thanks to these amazing projects which help power `relax`:
+Special thanks to these amazing projects which help power **relax**:
 
 - [slack-go](https://github.com/slack-go/slack) for providing the Slack API implementation in Go
 - [quotable](https://github.com/lukePeavey/quotable) for providing API for quotes
