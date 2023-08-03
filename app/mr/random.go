@@ -167,7 +167,7 @@ func SelfReviewerStatus(client *slack.Client, userID string) (slack.MsgOption, e
 			return partial * partial
 		})
 
-		totalWeight -= weight
+		totalWeight -= (max - reviews[i]) * (max - reviews[i])
 
 		if totalWeight == 0 {
 			reviewees[i] = Reviewee{
