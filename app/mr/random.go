@@ -12,22 +12,15 @@ import (
 )
 
 func randomlyPickReviewer(reviewers []Reviewer) Reviewer {
-	reviews := f.SumBy(reviewers, func(reviewer Reviewer) int {
+	reviews := f.MaxBy(reviewers, func(reviewer Reviewer) int {
 		return reviewer.ReviewCount
-	})
-
-	if reviews == 0 {
-		reviews = 1
-	}
+	}) + 1
 
 	values := f.Map(reviewers, func(reviewer Reviewer) random.WeightedValue[Reviewer] {
+		partial := reviews - reviewer.ReviewCount
 		return random.WeightedValue[Reviewer]{
-			Value: reviewer,
-			Weight: f.IfElseF(
-				reviewer.ReviewCount == 0,
-				func() int { return reviews * len(reviewers) },
-				func() int { return reviews / reviewer.ReviewCount },
-			),
+			Value:  reviewer,
+			Weight: partial * partial,
 		}
 	})
 
@@ -150,11 +143,12 @@ func SelfReviewerStatus(client *slack.Client, userID string) (slack.MsgOption, e
 		return nil, err
 	}
 
-	baseSum := f.Sum(reviews)
 	_, userIndex, ok := f.FindIndexOf(members, func(member slack.User) bool { return member.ID == userID })
 	if !ok {
 		return nil, errors.New("user not found")
 	}
+
+	max := f.MaxBy(reviews, func(review int) int { return review }) + 1
 
 	reviewees := make([]Reviewee, len(members))
 	for i, member := range members {
@@ -166,20 +160,14 @@ func SelfReviewerStatus(client *slack.Client, userID string) (slack.MsgOption, e
 			continue
 		}
 
-		currentSum := baseSum - reviews[i]
+		weight := (max - reviews[i]) * (max - reviews[i])
+
 		totalWeight := f.SumBy(reviews, func(review int) int {
-			return f.IfElseF(
-				review == 0,
-				func() int { return currentSum * (len(members) - 1) },
-				func() int { return currentSum / review },
-			)
+			partial := max - review
+			return partial * partial
 		})
 
-		totalWeight -= f.IfElseF(
-			reviews[i] == 0,
-			func() int { return currentSum * (len(members) - 1) },
-			func() int { return currentSum / reviews[i] },
-		)
+		totalWeight -= weight
 
 		if totalWeight == 0 {
 			reviewees[i] = Reviewee{
@@ -190,12 +178,8 @@ func SelfReviewerStatus(client *slack.Client, userID string) (slack.MsgOption, e
 		}
 
 		reviewees[i] = Reviewee{
-			User: member,
-			ReviewerChance: f.IfElseF(
-				reviews[userIndex] == 0,
-				func() int { return currentSum * (len(members) - 1) * 100 / totalWeight },
-				func() int { return currentSum / reviews[userIndex] * 100 / totalWeight },
-			),
+			User:           member,
+			ReviewerChance: weight * 100 / totalWeight,
 		}
 	}
 
