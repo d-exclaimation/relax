@@ -160,7 +160,7 @@ func SelfReviewerStatus(client *slack.Client, userID string) (slack.MsgOption, e
 			continue
 		}
 
-		weight := (max - reviews[i]) * (max - reviews[i])
+		weight := (max - reviews[userIndex]) * (max - reviews[userIndex])
 
 		totalWeight := f.SumBy(reviews, func(review int) int {
 			partial := max - review
