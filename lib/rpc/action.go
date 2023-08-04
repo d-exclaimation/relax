@@ -67,7 +67,7 @@ func (r *ActionsRouter[C]) HandleMentionAsync(message string, ctx func() C) asyn
 			if route.trigger(event) {
 				err := route.resolver(strings.Join(args[1:], " "), ctx())
 				if err != nil {
-					log.Fatalln(err)
+					log.Printf("%s gives back %s\n", event, err.Error())
 				}
 				return async.Done, nil
 			}
@@ -76,7 +76,7 @@ func (r *ActionsRouter[C]) HandleMentionAsync(message string, ctx func() C) asyn
 		if r.fallback != nil {
 			err := r.fallback(strings.Join(args, " "), ctx())
 			if err != nil {
-				log.Fatalln(err)
+				log.Printf("fallback gives back %s\n", err.Error())
 			}
 		}
 
@@ -92,7 +92,7 @@ func (r *ActionsRouter[C]) HandleCommandAsync(command string, ctx func() C) asyn
 			if route.trigger(event) {
 				err := route.resolver(strings.Join(args[1:], " "), ctx())
 				if err != nil {
-					log.Fatalln(err)
+					log.Printf("%s gives back %s\n", event, err.Error())
 				}
 				return async.Done, nil
 			}

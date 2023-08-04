@@ -11,6 +11,7 @@ import (
 	"d-exclaimation.me/relax/app/mr"
 	"d-exclaimation.me/relax/app/quote"
 	"d-exclaimation.me/relax/lib/f"
+	"d-exclaimation.me/relax/lib/kv"
 	"d-exclaimation.me/relax/lib/rpc"
 	"github.com/slack-go/slack"
 	"github.com/slack-go/slack/slackevents"
@@ -72,6 +73,48 @@ func workflows(client *slack.Client) rpc.WorkflowsRouter[AppContext] {
 				return rpc.WorkflowSuccessResult{
 					Outputs: map[string]string{
 						mr.RANDOM_REVIEWER: reviewer.User.ID,
+					},
+				}
+			}),
+
+		rpc.Step[AppContext]("selected_reviewer").
+			OnEdit(func(e slack.InteractionCallback, ctx AppContext) []slack.Block {
+				return mr.ReviewerWorkflowStepBlocks(e.User.ID, e.Channel.ID)
+			}).
+			OnSave(func(e slack.InteractionCallback, ctx AppContext) rpc.WorkflowInOut {
+				values := e.View.State.Values
+				user := values[mr.REVIEWEE_INPUT][mr.REVIEWEE_ACTION].SelectedUser
+				channel := values[mr.CHANNEL_INPUT][mr.CHANNEL_ACTION].SelectedConversation
+				return rpc.WorkflowInOut{
+					In: &slack.WorkflowStepInputs{
+						mr.REVIEWEE_ACTION: {
+							Value: user,
+						},
+						mr.CHANNEL_ACTION: {
+							Value: channel,
+						},
+					},
+					Out: &[]slack.WorkflowStepOutput{
+						{
+							Name:  "status",
+							Type:  "text",
+							Label: "Status",
+						},
+					},
+				}
+			}).
+			OnExecute(func(e *slackevents.WorkflowStepExecuteEvent, ctx AppContext) rpc.WorkflowExecutionResult {
+				user := (*e.WorkflowStep.Inputs)[mr.REVIEWEE_ACTION].Value
+				// channel := (*e.WorkflowStep.Inputs)[mr.CHANNEL_ACTION].Value
+
+				_, err := kv.Incr("reviews:" + user).Await()
+				if err != nil {
+					return rpc.WorkflowFailureResult{Message: err.Error()}
+				}
+
+				return rpc.WorkflowSuccessResult{
+					Outputs: map[string]string{
+						"status": "ok",
 					},
 				}
 			}),

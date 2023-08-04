@@ -123,7 +123,7 @@ func (r *WorkflowsRouter[C]) HandleAsync(
 				}
 
 				if err != nil {
-					log.Fatalln(err)
+					log.Printf("%s (execute) gives back %s", event.CallbackID, err.Error())
 				}
 				return async.Done, nil
 			}
@@ -172,7 +172,7 @@ func (r *WorkflowsRouter[C]) HandleInteractionAsync(
 			}
 
 			if err != nil {
-				log.Fatalln(err)
+				log.Printf("%s (interaction) gives back %s", event.CallbackID, err.Error())
 			}
 			return async.Done, nil
 		}
