@@ -107,10 +107,7 @@ func workflows(client *slack.Client) rpc.WorkflowsRouter[AppContext] {
 				user := (*e.WorkflowStep.Inputs)[mr.REVIEWEE_ACTION].Value
 				// channel := (*e.WorkflowStep.Inputs)[mr.CHANNEL_ACTION].Value
 
-				_, err := kv.Incr("reviews:" + user).Await()
-				if err != nil {
-					return rpc.WorkflowFailureResult{Message: err.Error()}
-				}
+				kv.Incr("reviews:" + user).Await()
 
 				return rpc.WorkflowSuccessResult{
 					Outputs: map[string]string{
