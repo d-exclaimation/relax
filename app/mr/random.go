@@ -2,6 +2,7 @@ package mr
 
 import (
 	"errors"
+	"log"
 
 	"d-exclaimation.me/relax/app/emoji"
 	"d-exclaimation.me/relax/lib/async"
@@ -92,13 +93,17 @@ func RandomReviewer(client *slack.Client, excluding func(slack.User) bool) (Revi
 		return Reviewer{}, nil
 	}
 
+	log.Print("Selecting reviewers: ")
 	reviewers := make([]Reviewer, len(filteredMembers))
 	for i, member := range filteredMembers {
 		reviewers[i] = Reviewer{
 			User:        member,
 			ReviewCount: reviews[i],
 		}
+		log.Printf(" %s (%d)", reviewers[i].User.Name, reviewers[i].ReviewCount)
 	}
+	log.Println()
+
 	reviewer := randomlyPickReviewer(reviewers)
 	kv.Incr("reviews:" + reviewer.User.ID)
 
